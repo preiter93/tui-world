@@ -1,0 +1,26 @@
+[package]
+name = "tui-world"
+version = "0.1.0"
+edition = "2024"
+repository = "https://github.com/preiter93/tui-world"
+keywords = ["ratatui", "tui", "world", "framework", "events"]
+description = "A state and event management library for TUIs built with ratatui"
+authors = ["preiter <phil.reiter93@gmail.com>"]
+license = "MIT"
+
+[dependencies]
+crossterm = "0.29.0"
+ratatui = { version = "0.30.0", optional = true }
+
+[dev-dependencies]
+anyhow = "1.0"
+tui-theme-builder = "0.2.2"
+
+[features]
+default = ["ratatui"]
+ratatui = ["dep:ratatui"]
+
+[[example]]
+name = "todo"
+path = "examples/todo/main.rs"
+required-features = ["ratatui"]
