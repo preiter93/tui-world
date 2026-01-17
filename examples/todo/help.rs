@@ -62,7 +62,6 @@ pub fn render(frame: &mut Frame, world: &World, area: Rect) {
 
     let mut lines: Vec<Line> = Vec::new();
 
-    // Group bindings by (context, name)
     let mut widget_groups: BTreeMap<&'static str, Vec<&DisplayInfo>> = BTreeMap::new();
     let mut global_groups: BTreeMap<&'static str, Vec<&DisplayInfo>> = BTreeMap::new();
     let mut widget_label = "";
@@ -91,7 +90,7 @@ pub fn render(frame: &mut Frame, world: &World, area: Rect) {
                 .collect::<Vec<_>>()
                 .join("/");
             lines.push(Line::from(vec![
-                Span::styled(format!("{:>10}", keys), theme.keybinding_key),
+                Span::styled(format!("{:>12}", keys), theme.keybinding_key),
                 Span::raw("  "),
                 Span::styled(*name, theme.text),
             ]));
@@ -108,7 +107,7 @@ pub fn render(frame: &mut Frame, world: &World, area: Rect) {
                 .collect::<Vec<_>>()
                 .join("/");
             lines.push(Line::from(vec![
-                Span::styled(format!("{:>10}", keys), theme.keybinding_key),
+                Span::styled(format!("{:>12}", keys), theme.keybinding_key),
                 Span::raw("  "),
                 Span::styled(*name, theme.text),
             ]));

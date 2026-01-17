@@ -99,9 +99,9 @@ pub fn setup_keybindings(kb: &mut Keybindings) {
         },
     );
 
-    kb.bind(
+    kb.bind_many(
         Context::Widget(TODO_LIST_ID),
-        KeyCode::Enter,
+        keys![KeyCode::Enter, ' '],
         "Toggle",
         "",
         |world| {

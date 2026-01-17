@@ -225,7 +225,12 @@ impl KeyBinding {
         }
 
         let key = match self.code {
-            KeyCode::Char(c) => c.to_string(),
+            KeyCode::Char(c) => {
+                if c == ' ' {
+                    return "Space".to_string();
+                }
+                c.to_string()
+            }
             KeyCode::Up => "↑".to_string(),
             KeyCode::Down => "↓".to_string(),
             KeyCode::Left => "←".to_string(),
