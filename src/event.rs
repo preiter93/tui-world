@@ -1,4 +1,4 @@
-use crate::{HitMap, Keybindings, Mouse, WidgetId, World};
+use crate::{Keybindings, Pointer, WidgetId, World};
 use crossterm::event::{KeyEvent, MouseEvent, MouseEventKind};
 
 #[derive(Debug)]
@@ -30,13 +30,10 @@ impl Event {
                 let x = mouse.column;
                 let y = mouse.row;
 
-                let hit = world.get::<HitMap>().hit_test(x, y);
+                let handler = world.get::<Pointer>().hit_test_handler(x, y);
 
-                if let Some(widget_id) = hit {
-                    let handler = world.get::<Mouse>().get(widget_id);
-                    if let Some(f) = handler {
-                        f(world, x, y);
-                    }
+                if let Some((_, f)) = handler {
+                    f(world, x, y);
                 }
             }
             Event::Tick => {}

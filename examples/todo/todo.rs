@@ -108,7 +108,7 @@ pub fn setup_keybindings(kb: &mut Keybindings) {
 
 pub fn setup_click_handler(world: &mut World) {
     world
-        .get_mut::<Mouse>()
+        .get_mut::<Pointer>()
         .on_click(TODO_LIST_ID, |world, _x, y| {
             let area = world.get::<AppState>().area;
             let inner_y = area.y + 1;
@@ -167,5 +167,5 @@ pub fn render(frame: &mut Frame, world: &mut World, area: Rect) {
     frame.render_widget(block, area);
     frame.render_widget(Paragraph::new(lines), inner);
 
-    world.get_mut::<HitMap>().set(TODO_LIST_ID, inner);
+    world.get_mut::<Pointer>().set(TODO_LIST_ID, inner);
 }

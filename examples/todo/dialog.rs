@@ -126,5 +126,5 @@ pub fn render(frame: &mut Frame, world: &mut World, area: Rect) {
     frame.render_widget(block, dialog_area);
     frame.render_widget(input, inner);
 
-    world.get_mut::<tui_world::HitMap>().set(DIALOG_ID, inner);
+    world.get_mut::<Pointer>().set(DIALOG_ID, inner);
 }
