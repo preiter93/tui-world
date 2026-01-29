@@ -26,9 +26,9 @@ pub fn open(world: &mut World) {
     let area = world.get::<AppState>().area;
     let dialog_area = center_rect(area, 40, 15);
 
-    world.get_mut::<HitMap>().set(HELP_BACKDROP_ID, area);
+    world.get_mut::<Pointer>().set(HELP_BACKDROP_ID, area);
     world
-        .get_mut::<Mouse>()
+        .get_mut::<Pointer>()
         .on_click(HELP_BACKDROP_ID, move |world, x, y| {
             if !dialog_area.contains((x, y).into()) {
                 close(world);
@@ -38,8 +38,7 @@ pub fn open(world: &mut World) {
 
 pub fn close(world: &mut World) {
     world.get_mut::<AppState>().help_open = false;
-    world.get_mut::<HitMap>().remove(HELP_BACKDROP_ID);
-    world.get_mut::<Mouse>().remove(HELP_BACKDROP_ID);
+    world.get_mut::<Pointer>().remove(HELP_BACKDROP_ID);
 }
 
 pub fn render(frame: &mut Frame, world: &World, area: Rect) {
