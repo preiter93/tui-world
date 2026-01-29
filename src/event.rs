@@ -23,17 +23,50 @@ impl Event {
                 world.insert(keybindings);
             }
             Event::Mouse(mouse) => {
-                if !matches!(mouse.kind, MouseEventKind::Down(_)) {
-                    return;
-                }
-
                 let x = mouse.column;
                 let y = mouse.row;
 
-                let handler = world.get::<Pointer>().hit_test_handler(x, y);
+                match mouse.kind {
+                    MouseEventKind::Down(_) => {
+                        let hit = world.get::<Pointer>().hit_test(x, y);
+                        world.get_mut::<Pointer>().set_active(hit);
 
-                if let Some((_, f)) = handler {
-                    f(world, x, y);
+                        if let Some(widget_id) = hit {
+                            let handler = world
+                                .get::<Pointer>()
+                                .get_handler_for(widget_id, mouse.kind);
+                            if let Some(f) = handler {
+                                f(world, x, y);
+                            }
+                        }
+                    }
+                    MouseEventKind::Drag(_) => {
+                        // Drag events go to the widget that received mouse down
+                        let active = world.get::<Pointer>().active();
+                        if let Some(widget_id) = active {
+                            let handler = world
+                                .get::<Pointer>()
+                                .get_handler_for(widget_id, mouse.kind);
+                            if let Some(f) = handler {
+                                f(world, x, y);
+                            }
+                        }
+                    }
+                    MouseEventKind::Up(_) => {
+                        // Up events go to the widget that received mouse down
+                        let active = world.get::<Pointer>().active();
+                        if let Some(widget_id) = active {
+                            let handler = world
+                                .get::<Pointer>()
+                                .get_handler_for(widget_id, mouse.kind);
+                            if let Some(f) = handler {
+                                f(world, x, y);
+                            }
+                        }
+                        // Clear active widget on mouse up
+                        world.get_mut::<Pointer>().set_active(None);
+                    }
+                    _ => {}
                 }
             }
             Event::Tick => {}

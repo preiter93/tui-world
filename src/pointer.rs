@@ -3,7 +3,9 @@ use crate::World;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-pub type ClickFn = Arc<dyn Fn(&mut World, u16, u16) + Send + Sync>;
+pub use crossterm::event::MouseEventKind;
+
+pub type PointerFn = Arc<dyn Fn(&mut World, u16, u16) + Send + Sync>;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Area {
@@ -43,10 +45,19 @@ impl From<ratatui::layout::Rect> for Area {
     }
 }
 
+#[derive(Default)]
+struct Handlers {
+    down: Option<PointerFn>,
+    drag: Option<PointerFn>,
+    up: Option<PointerFn>,
+}
+
 pub struct Pointer {
     order: Vec<WidgetId>,
     areas: HashMap<WidgetId, Area>,
-    handlers: HashMap<WidgetId, ClickFn>,
+    handlers: HashMap<WidgetId, Handlers>,
+    /// Tracks which widget received the last mouse down event
+    active: Option<WidgetId>,
 }
 
 impl Default for Pointer {
@@ -62,6 +73,7 @@ impl Pointer {
             order: Vec::new(),
             areas: HashMap::new(),
             handlers: HashMap::new(),
+            active: None,
         }
     }
 
@@ -79,25 +91,53 @@ impl Pointer {
         self.areas.get(&id)
     }
 
-    /// Registers a click handler for a widget.
+    /// Registers a click (mouse down) handler for a widget.
     pub fn on_click<F>(&mut self, id: WidgetId, handler: F)
     where
         F: Fn(&mut World, u16, u16) + Send + Sync + 'static,
     {
-        self.handlers.insert(id, Arc::new(handler));
+        self.handlers.entry(id).or_default().down = Some(Arc::new(handler));
     }
 
-    /// Returns the click handler for a widget if it exists.
+    /// Registers a mouse down handler for a widget.
+    pub fn on_down<F>(&mut self, id: WidgetId, handler: F)
+    where
+        F: Fn(&mut World, u16, u16) + Send + Sync + 'static,
+    {
+        self.on_click(id, handler);
+    }
+
+    /// Registers a drag handler for a widget.
+    /// This is called when mouse moves while button is held down.
+    pub fn on_drag<F>(&mut self, id: WidgetId, handler: F)
+    where
+        F: Fn(&mut World, u16, u16) + Send + Sync + 'static,
+    {
+        self.handlers.entry(id).or_default().drag = Some(Arc::new(handler));
+    }
+
+    /// Registers a mouse up handler for a widget.
+    pub fn on_up<F>(&mut self, id: WidgetId, handler: F)
+    where
+        F: Fn(&mut World, u16, u16) + Send + Sync + 'static,
+    {
+        self.handlers.entry(id).or_default().up = Some(Arc::new(handler));
+    }
+
+    /// Returns the click/down handler for a widget if it exists.
     #[must_use]
-    pub fn get_handler(&self, id: WidgetId) -> Option<ClickFn> {
-        self.handlers.get(&id).cloned()
+    pub fn get_handler(&self, id: WidgetId) -> Option<PointerFn> {
+        self.handlers.get(&id).and_then(|h| h.down.clone())
     }
 
-    /// Removes a widget's area and handler.
+    /// Removes a widget's area and all handlers.
     pub fn remove(&mut self, id: WidgetId) {
         self.areas.remove(&id);
         self.handlers.remove(&id);
         self.order.retain(|&i| i != id);
+        if self.active == Some(id) {
+            self.active = None;
+        }
     }
 
     /// Performs a hit test to find which widget is at the given coordinates.
@@ -116,8 +156,35 @@ impl Pointer {
 
     /// Performs a hit test and returns the handler if found.
     #[must_use]
-    pub fn hit_test_handler(&self, x: u16, y: u16) -> Option<(WidgetId, ClickFn)> {
-        self.hit_test(x, y)
-            .and_then(|id| self.handlers.get(&id).cloned().map(|h| (id, h)))
+    pub fn hit_test_handler(&self, x: u16, y: u16) -> Option<(WidgetId, PointerFn)> {
+        self.hit_test(x, y).and_then(|id| {
+            self.handlers
+                .get(&id)
+                .and_then(|h| h.down.clone())
+                .map(|h| (id, h))
+        })
+    }
+
+    /// Sets the active widget (the one that received mouse down).
+    pub fn set_active(&mut self, id: Option<WidgetId>) {
+        self.active = id;
+    }
+
+    /// Returns the currently active widget.
+    #[must_use]
+    pub fn active(&self) -> Option<WidgetId> {
+        self.active
+    }
+
+    /// Gets the handler for a specific event kind and widget.
+    #[must_use]
+    pub fn get_handler_for(&self, id: WidgetId, kind: MouseEventKind) -> Option<PointerFn> {
+        let handlers = self.handlers.get(&id)?;
+        match kind {
+            MouseEventKind::Down(_) => handlers.down.clone(),
+            MouseEventKind::Drag(_) => handlers.drag.clone(),
+            MouseEventKind::Up(_) => handlers.up.clone(),
+            _ => None,
+        }
     }
 }
