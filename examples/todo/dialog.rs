@@ -53,10 +53,9 @@ impl DialogState {
 
 pub fn setup_keybindings(kb: &mut Keybindings) {
     kb.bind(
-        Context::Widget(DIALOG_ID),
+        DIALOG_ID,
         KeyBinding::key(KeyCode::Esc),
         "Cancel",
-        "",
         |world| {
             world.get_mut::<DialogState>().close();
             world.get_mut::<Focus>().set(TODO_LIST_ID);
@@ -64,10 +63,9 @@ pub fn setup_keybindings(kb: &mut Keybindings) {
     );
 
     kb.bind(
-        Context::Widget(DIALOG_ID),
+        DIALOG_ID,
         KeyBinding::key(KeyCode::Enter),
         "Confirm",
-        "",
         |world| {
             let input = world.get_mut::<DialogState>().take_input();
             if !input.is_empty() {
@@ -84,10 +82,9 @@ pub fn setup_keybindings(kb: &mut Keybindings) {
     );
 
     kb.bind(
-        Context::Widget(DIALOG_ID),
+        DIALOG_ID,
         KeyBinding::key(KeyCode::Backspace),
         "Delete char",
-        "",
         |world| {
             world.get_mut::<DialogState>().pop();
         },
@@ -129,5 +126,5 @@ pub fn render(frame: &mut Frame, world: &mut World, area: Rect) {
     frame.render_widget(block, dialog_area);
     frame.render_widget(input, inner);
 
-    world.get_mut::<tui_world::Layout>().set(DIALOG_ID, inner);
+    world.get_mut::<tui_world::HitMap>().set(DIALOG_ID, inner);
 }

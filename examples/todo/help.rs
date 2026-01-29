@@ -1,4 +1,4 @@
-use crate::app::AppState;
+use crate::app::{AppState, get_active_ids};
 use crate::theme::Theme;
 use ratatui::{
     Frame,
@@ -26,7 +26,7 @@ pub fn open(world: &mut World) {
     let area = world.get::<AppState>().area;
     let dialog_area = center_rect(area, 40, 15);
 
-    world.get_mut::<Layout>().set(HELP_BACKDROP_ID, area);
+    world.get_mut::<HitMap>().set(HELP_BACKDROP_ID, area);
     world
         .get_mut::<Mouse>()
         .on_click(HELP_BACKDROP_ID, move |world, x, y| {
@@ -38,7 +38,7 @@ pub fn open(world: &mut World) {
 
 pub fn close(world: &mut World) {
     world.get_mut::<AppState>().help_open = false;
-    world.get_mut::<Layout>().remove(HELP_BACKDROP_ID);
+    world.get_mut::<HitMap>().remove(HELP_BACKDROP_ID);
     world.get_mut::<Mouse>().remove(HELP_BACKDROP_ID);
 }
 
@@ -56,60 +56,43 @@ pub fn render(frame: &mut Frame, world: &World, area: Rect) {
     let inner = block.inner(dialog_area);
     frame.render_widget(block, dialog_area);
 
-    let focus = world.get::<Focus>().get();
+    let active = get_active_ids(&world);
+
     let keybindings = world.get::<Keybindings>();
-    let display = keybindings.display_for(focus);
+    let display = keybindings.display_for(&active);
 
     let mut lines: Vec<Line> = Vec::new();
 
-    let mut widget_groups: BTreeMap<&'static str, Vec<&DisplayInfo>> = BTreeMap::new();
-    let mut global_groups: BTreeMap<&'static str, Vec<&DisplayInfo>> = BTreeMap::new();
-    let mut widget_label = "";
-
+    let mut groups: BTreeMap<WidgetId, BTreeMap<&'static str, Vec<&DisplayInfo>>> = BTreeMap::new();
     for info in &display {
-        match info.context {
-            Context::Widget(id) => {
-                widget_label = id.0;
-                widget_groups.entry(info.name).or_default().push(info);
-            }
-            Context::Global => {
-                global_groups.entry(info.name).or_default().push(info);
-            }
-        }
+        groups
+            .entry(info.id)
+            .or_default()
+            .entry(info.name)
+            .or_default()
+            .push(info);
     }
 
-    if !widget_groups.is_empty() {
-        lines.push(Line::from(Span::styled(
-            format!("[{}]", widget_label),
-            theme.title,
-        )));
-        for (name, infos) in &widget_groups {
+    for (id, commands) in groups {
+        let header = format!("[{}]", id.0);
+
+        if !lines.is_empty() {
+            lines.push(Line::from(""));
+        }
+
+        lines.push(Line::from(Span::styled(header, theme.title)));
+
+        for (name, infos) in commands {
             let keys = infos
                 .iter()
                 .map(|i| i.key.to_string())
                 .collect::<Vec<_>>()
                 .join("/");
-            lines.push(Line::from(vec![
-                Span::styled(format!("{:>12}", keys), theme.keybinding_key),
-                Span::raw("  "),
-                Span::styled(*name, theme.text),
-            ]));
-        }
-        lines.push(Line::from(""));
-    }
 
-    if !global_groups.is_empty() {
-        lines.push(Line::from(Span::styled("[Global]", theme.title)));
-        for (name, infos) in &global_groups {
-            let keys = infos
-                .iter()
-                .map(|i| i.key.to_string())
-                .collect::<Vec<_>>()
-                .join("/");
             lines.push(Line::from(vec![
                 Span::styled(format!("{:>12}", keys), theme.keybinding_key),
                 Span::raw("  "),
-                Span::styled(*name, theme.text),
+                Span::styled(name, theme.text),
             ]));
         }
     }

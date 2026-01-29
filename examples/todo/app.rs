@@ -7,6 +7,8 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 use tui_world::prelude::*;
 
+pub const GLOBAL_ID: WidgetId = WidgetId("Global");
+
 #[derive(Default)]
 pub struct AppState {
     pub should_quit: bool,
@@ -28,21 +30,14 @@ pub fn setup(world: &mut World) {
 fn setup_keybindings(world: &mut World) {
     let kb = world.get_mut::<Keybindings>();
 
-    kb.bind(
-        Context::Global,
-        KeyBinding::ctrl('c'),
-        "Quit",
-        "",
-        |world| {
-            world.get_mut::<AppState>().should_quit = true;
-        },
-    );
+    kb.bind(GLOBAL_ID, KeyBinding::ctrl('c'), "Quit", |world| {
+        world.get_mut::<AppState>().should_quit = true;
+    });
 
     kb.bind(
-        Context::Global,
+        GLOBAL_ID,
         KeyBinding::key(KeyCode::Char('?')),
         "Help",
-        "",
         |world| {
             help::toggle(world);
         },
@@ -65,4 +60,14 @@ pub fn render(frame: &mut Frame, world: &mut World) {
     if world.get::<AppState>().help_open {
         help::render(frame, world, area);
     }
+}
+
+pub fn get_active_ids(world: &World) -> Vec<WidgetId> {
+    let mut active = vec![GLOBAL_ID];
+
+    if let Some(id) = world.get::<Focus>().id {
+        active.push(id);
+    }
+
+    active
 }

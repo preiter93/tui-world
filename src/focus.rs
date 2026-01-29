@@ -1,21 +1,28 @@
 use crate::WidgetId;
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Focus {
-    active: WidgetId,
+    pub id: Option<WidgetId>,
 }
 
 impl Focus {
-    #[must_use]
-    pub fn new(widget: WidgetId) -> Self {
-        Self { active: widget }
+    /// Creates a new Focus with a specific widget active.
+    pub const fn new(id: WidgetId) -> Self {
+        Self { id: Some(id) }
     }
 
-    pub fn set(&mut self, widget: WidgetId) {
-        self.active = widget;
+    /// Creates a new Focus with nothing active.
+    pub const fn none() -> Self {
+        Self { id: None }
     }
 
-    #[must_use]
-    pub fn get(&self) -> WidgetId {
-        self.active
+    /// Updates the focus. Accepts an Option<WidgetId>.
+    pub fn set(&mut self, id: impl Into<Option<WidgetId>>) {
+        self.id = id.into();
+    }
+
+    /// Clears the current focus.
+    pub fn clear(&mut self) {
+        self.id = None;
     }
 }
