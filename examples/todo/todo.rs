@@ -79,41 +79,28 @@ impl TodoState {
 }
 
 pub fn setup_keybindings(kb: &mut Keybindings) {
-    kb.bind_many(
-        Context::Widget(TODO_LIST_ID),
-        keys![KeyCode::Up, 'k'],
-        "Up",
-        "",
-        |world| {
-            world.get_mut::<TodoState>().move_up();
-        },
-    );
+    kb.bind_many(TODO_LIST_ID, keys![KeyCode::Up, 'k'], "Up", |world| {
+        world.get_mut::<TodoState>().move_up();
+    });
+
+    kb.bind_many(TODO_LIST_ID, keys![KeyCode::Down, 'j'], "Down", |world| {
+        world.get_mut::<TodoState>().move_down();
+    });
 
     kb.bind_many(
-        Context::Widget(TODO_LIST_ID),
-        keys![KeyCode::Down, 'j'],
-        "Down",
-        "",
-        |world| {
-            world.get_mut::<TodoState>().move_down();
-        },
-    );
-
-    kb.bind_many(
-        Context::Widget(TODO_LIST_ID),
+        TODO_LIST_ID,
         keys![KeyCode::Enter, ' '],
         "Toggle",
-        "",
         |world| {
             world.get_mut::<TodoState>().toggle_selected();
         },
     );
 
-    kb.bind(Context::Widget(TODO_LIST_ID), 'd', "Delete", "", |world| {
+    kb.bind(TODO_LIST_ID, 'd', "Delete", |world| {
         world.get_mut::<TodoState>().delete_selected();
     });
 
-    kb.bind(Context::Widget(TODO_LIST_ID), 'a', "Add", "", |world| {
+    kb.bind(TODO_LIST_ID, 'a', "Add", |world| {
         world.get_mut::<DialogState>().open("Add Todo");
         world.get_mut::<Focus>().set(DIALOG_ID);
     });
@@ -180,5 +167,5 @@ pub fn render(frame: &mut Frame, world: &mut World, area: Rect) {
     frame.render_widget(block, area);
     frame.render_widget(Paragraph::new(lines), inner);
 
-    world.get_mut::<Layout>().set(TODO_LIST_ID, inner);
+    world.get_mut::<HitMap>().set(TODO_LIST_ID, inner);
 }

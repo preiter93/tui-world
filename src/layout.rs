@@ -34,12 +34,12 @@ impl From<ratatui::layout::Rect> for Area {
 }
 
 #[derive(Default)]
-pub struct Layout {
+pub struct HitMap {
     order: Vec<WidgetId>,
     rects: HashMap<WidgetId, Area>,
 }
 
-impl Layout {
+impl HitMap {
     pub fn set<W: Into<Area>>(&mut self, id: WidgetId, rect: W) {
         if !self.rects.contains_key(&id) {
             self.order.push(id);

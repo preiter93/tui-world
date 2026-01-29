@@ -1,4 +1,4 @@
-use crate::{Focus, Keybindings, Layout, Mouse, World};
+use crate::{HitMap, Keybindings, Mouse, WidgetId, World};
 use crossterm::event::{KeyEvent, MouseEvent, MouseEventKind};
 
 #[derive(Debug)]
@@ -14,13 +14,12 @@ impl Event {
     /// # Panics
     ///
     /// Panics if the `Keybindings` resource is not present in the world.
-    pub fn handle(self, world: &mut World) {
+    pub fn handle(self, world: &mut World, ids: &[WidgetId]) {
         match self {
             Event::Key(key) => {
                 let binding = (&key).into();
-                let focus = world.get::<Focus>().get();
                 let keybindings = world.remove::<Keybindings>().unwrap();
-                keybindings.handle(&binding, focus, world);
+                keybindings.handle(&binding, world, ids);
                 world.insert(keybindings);
             }
             Event::Mouse(mouse) => {
@@ -31,7 +30,7 @@ impl Event {
                 let x = mouse.column;
                 let y = mouse.row;
 
-                let hit = world.get::<Layout>().hit_test(x, y);
+                let hit = world.get::<HitMap>().hit_test(x, y);
 
                 if let Some(widget_id) = hit {
                     let handler = world.get::<Mouse>().get(widget_id);

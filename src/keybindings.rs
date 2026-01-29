@@ -23,19 +23,18 @@ pub enum Context {
     Widget(WidgetId),
 }
 
+#[derive(Debug)]
 pub struct DisplayInfo {
     pub key: KeyBinding,
-    pub context: Context,
+    pub id: WidgetId,
     pub name: &'static str,
-    pub description: &'static str,
 }
 
 struct Binding {
     key: KeyBinding,
-    context: Context,
+    id: WidgetId,
     action: ActionFn,
     name: &'static str,
-    description: &'static str,
 }
 
 struct CatchAllHandler {
@@ -65,18 +64,16 @@ impl Keybindings {
 
     pub fn bind(
         &mut self,
-        ctx: Context,
+        id: WidgetId,
         key: impl Into<KeyBinding>,
         name: &'static str,
-        description: &'static str,
         action: impl Fn(&mut World) + Send + Sync + 'static,
     ) {
         self.bindings.push(Binding {
+            id,
             key: key.into(),
-            context: ctx,
             action: Box::new(action),
             name,
-            description,
         });
     }
 
@@ -94,33 +91,26 @@ impl Keybindings {
     /// Binds multiple keys to the same action.
     pub fn bind_many(
         &mut self,
-        ctx: Context,
+        id: WidgetId,
         keys: impl Into<Keys>,
         name: &'static str,
-        description: &'static str,
         action: impl Fn(&mut World) + Send + Sync + Clone + 'static,
     ) {
         for key in keys.into().0 {
-            self.bind(ctx, key, name, description, action.clone());
+            self.bind(id, key, name, action.clone());
         }
     }
 
-    pub fn handle(&self, key: &KeyBinding, focus: WidgetId, world: &mut World) -> bool {
+    pub fn handle(&self, key: &KeyBinding, world: &mut World, ids: &[WidgetId]) -> bool {
         // First, try to find a matching keybinding
         for binding in &self.bindings {
             if binding.key != *key {
                 continue;
             }
-            match binding.context {
-                Context::Global => {
-                    (binding.action)(world);
-                    return true;
-                }
-                Context::Widget(w) if w == focus => {
-                    (binding.action)(world);
-                    return true;
-                }
-                Context::Widget(_) => {}
+
+            if ids.contains(&binding.id) {
+                (binding.action)(world);
+                return true;
             }
         }
 
@@ -131,7 +121,7 @@ impl Keybindings {
                     (handler.handler)(world, key);
                     return true;
                 }
-                Context::Widget(w) if w == focus => {
+                Context::Widget(w) if ids.contains(&w) => {
                     (handler.handler)(world, key);
                     return true;
                 }
@@ -143,23 +133,19 @@ impl Keybindings {
     }
 
     /// Removes all keybindings for the given context.
-    pub fn unbind(&mut self, ctx: Context) {
-        self.bindings.retain(|b| b.context != ctx);
+    pub fn unbind(&mut self, id: WidgetId) {
+        self.bindings.retain(|b| b.id != id);
     }
 
     #[must_use]
-    pub fn display_for(&self, focus: WidgetId) -> Vec<DisplayInfo> {
+    pub fn display_for(&self, id: &[WidgetId]) -> Vec<DisplayInfo> {
         self.bindings
             .iter()
-            .filter(|b| match b.context {
-                Context::Global => true,
-                Context::Widget(w) => w == focus,
-            })
+            .filter(|b| id.contains(&b.id))
             .map(|b| DisplayInfo {
                 key: b.key,
-                context: b.context,
+                id: b.id,
                 name: b.name,
-                description: b.description,
             })
             .collect()
     }
@@ -170,9 +156,8 @@ impl Keybindings {
             .iter()
             .map(|b| DisplayInfo {
                 key: b.key,
-                context: b.context,
+                id: b.id,
                 name: b.name,
-                description: b.description,
             })
             .collect()
     }
