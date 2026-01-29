@@ -1,7 +1,7 @@
 use std::any::{Any, TypeId, type_name};
 use std::collections::HashMap;
 
-use crate::{Keybindings, Pointer};
+use crate::{Focus, Keybindings, Pointer};
 
 pub struct World {
     resources: HashMap<TypeId, Box<dyn Any>>,
@@ -10,6 +10,7 @@ pub struct World {
 impl Default for World {
     fn default() -> Self {
         let mut world = Self::new();
+        world.insert(Focus::default());
         world.insert(Keybindings::new());
         world.insert(Pointer::new());
         world

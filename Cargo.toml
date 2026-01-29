@@ -24,3 +24,8 @@ ratatui = ["dep:ratatui"]
 name = "todo"
 path = "examples/todo/main.rs"
 required-features = ["ratatui"]
+
+[[example]]
+name = "selectable_text"
+path = "examples/selectable_text/main.rs"
+required-features = ["ratatui"]
