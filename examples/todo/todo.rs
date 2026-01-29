@@ -109,17 +109,27 @@ pub fn setup_keybindings(kb: &mut Keybindings) {
 pub fn setup_click_handler(world: &mut World) {
     world
         .get_mut::<Pointer>()
-        .on_click(TODO_LIST_ID, |world, _x, y| {
+        .on_click(TODO_LIST_ID, |world, x, y| {
             let area = world.get::<AppState>().area;
+            let inner_x = area.x + 1;
             let inner_y = area.y + 1;
 
             let clicked_index = y.saturating_sub(inner_y) as usize;
             let todos_len = world.get::<TodoState>().todos.len();
 
-            if clicked_index < todos_len
-                && let Some(todo) = world.get_mut::<TodoState>().todos.get_mut(clicked_index)
-            {
-                todo.done = !todo.done;
+            if clicked_index >= todos_len {
+                return;
+            }
+
+            let relative_x = x.saturating_sub(inner_x);
+            if (1..=3).contains(&relative_x) {
+                // Toggle when clicking on checkbox
+                if let Some(todo) = world.get_mut::<TodoState>().todos.get_mut(clicked_index) {
+                    todo.done = !todo.done;
+                }
+            } else {
+                // Select when clicking on text
+                world.get_mut::<TodoState>().selected = clicked_index;
             }
         });
 }
