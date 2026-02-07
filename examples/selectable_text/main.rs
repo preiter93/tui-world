@@ -1,55 +1,22 @@
+use std::collections::HashMap;
+
 use crossterm::event::{self, Event as CEvent, KeyCode, KeyModifiers};
 use ratatui::{
-    Frame,
+    buffer::Buffer,
+    layout::Rect,
     style::{Color, Style},
-    text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders},
 };
 use tui_world::prelude::*;
 
 const TEXT_ID: WidgetId = WidgetId("text");
-
-const TEXT: &str = "Click and drag to select this text.";
-
-#[derive(Default)]
-struct Selection {
-    start: Option<usize>,
-    end: Option<usize>,
-    area: Option<Area>,
-}
-
-impl Selection {
-    fn range(&self) -> Option<(usize, usize)> {
-        let (s, e) = (self.start?, self.end?);
-        Some((s.min(e), s.max(e)))
-    }
-
-    fn to_index(&self, x: u16, y: u16) -> usize {
-        let Some(area) = self.area else { return 0 };
-        let rx = x.saturating_sub(area.x) as usize;
-        let ry = y.saturating_sub(area.y) as usize;
-        (ry * area.width as usize + rx).min(TEXT.len())
-    }
-}
 
 fn main() -> anyhow::Result<()> {
     let mut terminal = ratatui::init();
     crossterm::execute!(std::io::stdout(), crossterm::event::EnableMouseCapture)?;
 
     let mut world = World::default();
-    world.insert(Selection::default());
-
-    world.get_mut::<Pointer>().on_down(TEXT_ID, |w, x, y| {
-        let idx = w.get::<Selection>().to_index(x, y);
-        let sel = w.get_mut::<Selection>();
-        sel.start = Some(idx);
-        sel.end = Some(idx);
-    });
-
-    world.get_mut::<Pointer>().on_drag(TEXT_ID, |w, x, y| {
-        let idx = w.get::<Selection>().to_index(x, y);
-        w.get_mut::<Selection>().end = Some(idx);
-    });
+    world.insert(Selections::default());
 
     world.get_mut::<Keybindings>().bind(
         TEXT_ID,
@@ -58,10 +25,19 @@ fn main() -> anyhow::Result<()> {
         |w| w.insert(Quit),
     );
 
-    world.get_mut::<Focus>().set(TEXT_ID);
-
     loop {
-        terminal.draw(|f| render(f, &mut world))?;
+        terminal.draw(|frame| {
+            let block = Block::default()
+                .borders(Borders::ALL)
+                .title(" Select text (Ctrl+C to quit) ");
+            let inner = block.inner(frame.area());
+            frame.render_widget(block, frame.area());
+
+            SelectableText::new(TEXT_ID, "Click and drag to select this text.")
+                .style(Style::default().fg(Color::White))
+                .selection_style(Style::default().fg(Color::White).bg(Color::Blue))
+                .render(inner, frame.buffer_mut(), &mut world);
+        })?;
 
         if world.exists::<Quit>() {
             break;
@@ -83,28 +59,137 @@ fn main() -> anyhow::Result<()> {
 
 struct Quit;
 
-fn render(frame: &mut Frame, world: &mut World) {
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(" Select text ");
-    let inner = block.inner(frame.area());
-    frame.render_widget(block, frame.area());
+/// Stores selection state for selectable text widgets
+#[derive(Default)]
+pub struct Selections {
+    selections: HashMap<WidgetId, Option<(usize, usize)>>,
+    anchors: HashMap<WidgetId, usize>,
+    text_areas: HashMap<WidgetId, (u16, u16, String)>,
+}
 
-    let selection = world.get::<Selection>().range();
-    let normal = Style::default().fg(Color::White);
-    let selected = Style::default().fg(Color::White).bg(Color::Blue);
+impl Selections {
+    pub fn get(&self, id: WidgetId) -> Option<(usize, usize)> {
+        self.selections.get(&id).copied().flatten()
+    }
 
-    let spans: Vec<Span> = TEXT
-        .chars()
-        .enumerate()
-        .map(|(i, c)| {
-            let is_sel = selection.map(|(s, e)| i >= s && i < e).unwrap_or(false);
-            Span::styled(c.to_string(), if is_sel { selected } else { normal })
-        })
-        .collect();
+    pub fn set(&mut self, id: WidgetId, selection: Option<(usize, usize)>) {
+        self.selections.insert(id, selection);
+    }
 
-    frame.render_widget(Paragraph::new(Line::from(spans)), inner);
+    pub fn set_anchor(&mut self, id: WidgetId, anchor: usize) {
+        self.anchors.insert(id, anchor);
+    }
 
-    world.get_mut::<Selection>().area = Some(inner.into());
-    world.get_mut::<Pointer>().set(TEXT_ID, inner);
+    pub fn get_anchor(&self, id: WidgetId) -> Option<usize> {
+        self.anchors.get(&id).copied()
+    }
+
+    pub fn set_text_area(&mut self, id: WidgetId, x: u16, y: u16, text: String) {
+        self.text_areas.insert(id, (x, y, text));
+    }
+
+    pub fn get_text_area(&self, id: WidgetId) -> Option<&(u16, u16, String)> {
+        self.text_areas.get(&id)
+    }
+
+    pub fn coords_to_index(&self, id: WidgetId, x: u16, y: u16) -> Option<usize> {
+        let (area_x, area_y, text) = self.get_text_area(id)?;
+        if y != *area_y {
+            return None;
+        }
+        let offset = x.saturating_sub(*area_x) as usize;
+        Some(offset.min(text.len()))
+    }
+}
+
+pub struct SelectableText {
+    id: WidgetId,
+    text: String,
+    style: Style,
+    selection_style: Style,
+}
+
+impl SelectableText {
+    pub fn new(id: WidgetId, text: impl Into<String>) -> Self {
+        Self {
+            id,
+            text: text.into(),
+            style: Style::default(),
+            selection_style: Style::default().bg(Color::Blue),
+        }
+    }
+
+    pub fn style(mut self, style: Style) -> Self {
+        self.style = style;
+        self
+    }
+
+    pub fn selection_style(mut self, style: Style) -> Self {
+        self.selection_style = style;
+        self
+    }
+
+    pub fn render(self, area: Rect, buf: &mut Buffer, world: &mut World) {
+        {
+            let selections = world.get_mut::<Selections>();
+            selections.set_text_area(self.id, area.x, area.y, self.text.clone());
+        }
+
+        let selection = world.get::<Selections>().get(self.id);
+
+        let chars: Vec<char> = self.text.chars().collect();
+        for (i, ch) in chars.iter().enumerate() {
+            if i >= area.width as usize {
+                break;
+            }
+
+            let style = if let Some((start, end)) = selection {
+                let (start, end) = if start <= end {
+                    (start, end)
+                } else {
+                    (end, start)
+                };
+                if i >= start && i < end {
+                    self.selection_style
+                } else {
+                    self.style
+                }
+            } else {
+                self.style
+            };
+
+            buf[(area.x + i as u16, area.y)]
+                .set_char(*ch)
+                .set_style(style);
+        }
+
+        let id = self.id;
+
+        world.get_mut::<Pointer>().set(id, area);
+
+        world.get_mut::<Pointer>().on_down(id, move |w, x, y| {
+            let index = w.get::<Selections>().coords_to_index(id, x, y);
+            if let Some(idx) = index {
+                let selections = w.get_mut::<Selections>();
+                selections.set_anchor(id, idx);
+                selections.set(id, Some((idx, idx)));
+            }
+        });
+
+        world.get_mut::<Pointer>().on_drag(id, move |w, x, y| {
+            let index = w.get::<Selections>().coords_to_index(id, x, y);
+            let anchor = w.get::<Selections>().get_anchor(id);
+            if let (Some(idx), Some(anchor)) = (index, anchor) {
+                w.get_mut::<Selections>().set(id, Some((anchor, idx)));
+            }
+        });
+
+        world.get_mut::<Pointer>().on_up(id, move |w, x, y| {
+            let index = w.get::<Selections>().coords_to_index(id, x, y);
+            let anchor = w.get::<Selections>().get_anchor(id);
+            if let (Some(idx), Some(anchor)) = (index, anchor) {
+                w.get_mut::<Selections>().set(id, Some((anchor, idx)));
+            }
+        });
+    }
 }

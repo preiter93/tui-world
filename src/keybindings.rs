@@ -17,12 +17,6 @@ macro_rules! keys {
 pub type ActionFn = Box<dyn Fn(&mut World) + Send + Sync>;
 pub type CatchAllFn = Box<dyn Fn(&mut World, &KeyBinding) + Send + Sync>;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum Context {
-    Global,
-    Widget(WidgetId),
-}
-
 #[derive(Debug)]
 pub struct DisplayInfo {
     pub key: KeyBinding,
@@ -38,7 +32,7 @@ struct Binding {
 }
 
 struct CatchAllHandler {
-    context: Context,
+    id: WidgetId,
     handler: CatchAllFn,
 }
 
@@ -79,11 +73,11 @@ impl Keybindings {
 
     pub fn catch_all(
         &mut self,
-        ctx: Context,
+        id: WidgetId,
         handler: impl Fn(&mut World, &KeyBinding) + Send + Sync + 'static,
     ) {
         self.catch_all_handlers.push(CatchAllHandler {
-            context: ctx,
+            id,
             handler: Box::new(handler),
         });
     }
@@ -102,7 +96,6 @@ impl Keybindings {
     }
 
     pub fn handle(&self, key: &KeyBinding, world: &mut World, ids: &[WidgetId]) -> bool {
-        // First, try to find a matching keybinding
         for binding in &self.bindings {
             if binding.key != *key {
                 continue;
@@ -114,18 +107,10 @@ impl Keybindings {
             }
         }
 
-        // No binding matched, try catch-all handlers
         for handler in &self.catch_all_handlers {
-            match handler.context {
-                Context::Global => {
-                    (handler.handler)(world, key);
-                    return true;
-                }
-                Context::Widget(w) if ids.contains(&w) => {
-                    (handler.handler)(world, key);
-                    return true;
-                }
-                Context::Widget(_) => {}
+            if ids.contains(&handler.id) {
+                (handler.handler)(world, key);
+                return true;
             }
         }
 
