@@ -63,9 +63,11 @@ impl Keybindings {
         name: &'static str,
         action: impl Fn(&mut World) + Send + Sync + 'static,
     ) {
+        let key = key.into();
+        self.bindings.retain(|b| !(b.key == key && b.id == id));
         self.bindings.push(Binding {
             id,
-            key: key.into(),
+            key,
             action: Box::new(action),
             name,
         });
