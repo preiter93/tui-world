@@ -4,7 +4,6 @@ use crate::theme::Theme;
 use crate::todo::{self, TodoState};
 use crossterm::event::KeyCode;
 use ratatui::Frame;
-use ratatui::layout::Rect;
 use tui_world::prelude::*;
 
 pub const GLOBAL_ID: WidgetId = WidgetId("Global");
@@ -13,7 +12,6 @@ pub const GLOBAL_ID: WidgetId = WidgetId("Global");
 pub struct AppState {
     pub should_quit: bool,
     pub help_open: bool,
-    pub area: Rect,
 }
 
 pub fn setup(world: &mut World) {
@@ -24,7 +22,6 @@ pub fn setup(world: &mut World) {
     world.insert(Focus::new(todo::TODO_LIST_ID));
 
     setup_keybindings(world);
-    todo::setup_click_handler(world);
 }
 
 fn setup_keybindings(world: &mut World) {
@@ -49,7 +46,6 @@ fn setup_keybindings(world: &mut World) {
 
 pub fn render(frame: &mut Frame, world: &mut World) {
     let area = frame.area();
-    world.get_mut::<AppState>().area = area;
 
     todo::render(frame, world, area);
 

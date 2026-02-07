@@ -22,8 +22,9 @@ pub fn toggle(world: &mut World) {
 
 pub fn open(world: &mut World) {
     world.get_mut::<AppState>().help_open = true;
+}
 
-    let area = world.get::<AppState>().area;
+fn setup_click_handler(world: &mut World, area: Rect) {
     let dialog_area = center_rect(area, 40, 15);
 
     world.get_mut::<Pointer>().set(HELP_BACKDROP_ID, area);
@@ -41,7 +42,9 @@ pub fn close(world: &mut World) {
     world.get_mut::<Pointer>().remove(HELP_BACKDROP_ID);
 }
 
-pub fn render(frame: &mut Frame, world: &World, area: Rect) {
+pub fn render(frame: &mut Frame, world: &mut World, area: Rect) {
+    setup_click_handler(world, area);
+
     let theme = world.get::<Theme>();
     let dialog_area = center_rect(area, 40, 15);
 
@@ -55,7 +58,7 @@ pub fn render(frame: &mut Frame, world: &World, area: Rect) {
     let inner = block.inner(dialog_area);
     frame.render_widget(block, dialog_area);
 
-    let active = get_active_ids(&world);
+    let active = get_active_ids(world);
 
     let keybindings = world.get::<Keybindings>();
     let display = keybindings.display_for(&active);

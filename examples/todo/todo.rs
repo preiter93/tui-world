@@ -1,4 +1,3 @@
-use crate::app::AppState;
 use crate::dialog::{DIALOG_ID, DialogState};
 use crate::theme::Theme;
 use crossterm::event::KeyCode;
@@ -106,22 +105,19 @@ pub fn setup_keybindings(kb: &mut Keybindings) {
     });
 }
 
-pub fn setup_click_handler(world: &mut World) {
+pub fn setup_click_handler(world: &mut World, area: Rect) {
+    world.get_mut::<Pointer>().set(TODO_LIST_ID, area);
     world
         .get_mut::<Pointer>()
-        .on_click(TODO_LIST_ID, |world, x, y| {
-            let area = world.get::<AppState>().area;
-            let inner_x = area.x + 1;
-            let inner_y = area.y + 1;
-
-            let clicked_index = y.saturating_sub(inner_y) as usize;
+        .on_click(TODO_LIST_ID, move |world, x, y| {
+            let clicked_index = y.saturating_sub(area.y) as usize;
             let todos_len = world.get::<TodoState>().todos.len();
 
             if clicked_index >= todos_len {
                 return;
             }
 
-            let relative_x = x.saturating_sub(inner_x);
+            let relative_x = x.saturating_sub(area.x);
             if (1..=3).contains(&relative_x) {
                 // Toggle when clicking on checkbox
                 if let Some(todo) = world.get_mut::<TodoState>().todos.get_mut(clicked_index) {
@@ -177,5 +173,5 @@ pub fn render(frame: &mut Frame, world: &mut World, area: Rect) {
     frame.render_widget(block, area);
     frame.render_widget(Paragraph::new(lines), inner);
 
-    world.get_mut::<Pointer>().set(TODO_LIST_ID, inner);
+    setup_click_handler(world, inner);
 }

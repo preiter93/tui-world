@@ -1,6 +1,6 @@
 # tui-world
 
-> ⚠️ **Work in Progress**: This library is development.
+> ⚠️ **Work in Progress**
 
 A state and event management library for TUIs built with [ratatui](https://github.com/ratatui/ratatui).
 
