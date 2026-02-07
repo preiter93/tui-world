@@ -15,7 +15,7 @@ macro_rules! keys {
 }
 
 pub type ActionFn = Box<dyn Fn(&mut World) + Send + Sync>;
-pub type CatchAllFn = Box<dyn Fn(&mut World, &KeyBinding) + Send + Sync>;
+pub type AnyKeyFn = Box<dyn Fn(&mut World, &KeyBinding) + Send + Sync>;
 
 #[derive(Debug)]
 pub struct DisplayInfo {
@@ -31,14 +31,14 @@ struct Binding {
     name: &'static str,
 }
 
-struct CatchAllHandler {
+struct AnyKeyHandler {
     id: WidgetId,
-    handler: CatchAllFn,
+    handler: AnyKeyFn,
 }
 
 pub struct Keybindings {
     bindings: Vec<Binding>,
-    catch_all_handlers: Vec<CatchAllHandler>,
+    any_key_handlers: Vec<AnyKeyHandler>,
 }
 
 impl Default for Keybindings {
@@ -52,7 +52,7 @@ impl Keybindings {
     pub fn new() -> Self {
         Self {
             bindings: Vec::new(),
-            catch_all_handlers: Vec::new(),
+            any_key_handlers: Vec::new(),
         }
     }
 
@@ -73,12 +73,14 @@ impl Keybindings {
         });
     }
 
-    pub fn catch_all(
+    /// Binds a handler that fires for any key press on the given widget
+    /// when no specific binding matches.
+    pub fn bind_any(
         &mut self,
         id: WidgetId,
         handler: impl Fn(&mut World, &KeyBinding) + Send + Sync + 'static,
     ) {
-        self.catch_all_handlers.push(CatchAllHandler {
+        self.any_key_handlers.push(AnyKeyHandler {
             id,
             handler: Box::new(handler),
         });
@@ -109,7 +111,7 @@ impl Keybindings {
             }
         }
 
-        for handler in &self.catch_all_handlers {
+        for handler in &self.any_key_handlers {
             if ids.contains(&handler.id) {
                 (handler.handler)(world, key);
                 return true;

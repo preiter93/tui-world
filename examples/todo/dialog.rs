@@ -90,7 +90,7 @@ pub fn setup_keybindings(kb: &mut Keybindings) {
         },
     );
 
-    kb.catch_all(Context::Widget(DIALOG_ID), |world, key| {
+    kb.bind_any(DIALOG_ID, |world, key| {
         if let KeyCode::Char(c) = key.code {
             world.get_mut::<DialogState>().push(c);
         }
