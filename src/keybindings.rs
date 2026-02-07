@@ -5,7 +5,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 ///
 /// # Example
 /// ```ignore
-/// kb.bind_many(ctx, keys![KeyCode::Up, 'k'], "Up", "", |world| { });
+/// kb.bind_many(ctx, keys![KeyCode::Up, 'k'], "Up", |world| { });
 /// ```
 #[macro_export]
 macro_rules! keys {

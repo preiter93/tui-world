@@ -21,4 +21,10 @@ impl Focus {
     pub fn clear(&mut self) {
         self.id = None;
     }
+
+    /// Returns true if the given widget has focus.
+    #[must_use]
+    pub fn is_focused(&self, id: WidgetId) -> bool {
+        self.id == Some(id)
+    }
 }
