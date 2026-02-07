@@ -14,7 +14,6 @@ ratatui = { version = "0.30.0", optional = true }
 
 [dev-dependencies]
 anyhow = "1.0"
-tui-theme-builder = "0.2.2"
 
 [features]
 default = ["ratatui"]
@@ -22,10 +21,15 @@ ratatui = ["dep:ratatui"]
 
 [[example]]
 name = "todo"
-path = "examples/todo/main.rs"
+path = "examples/todo.rs"
+required-features = ["ratatui"]
+
+[[example]]
+name = "help"
+path = "examples/help.rs"
 required-features = ["ratatui"]
 
 [[example]]
 name = "selectable_text"
-path = "examples/selectable_text/main.rs"
+path = "examples/selectable_text.rs"
 required-features = ["ratatui"]
