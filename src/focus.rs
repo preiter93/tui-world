@@ -7,13 +7,9 @@ pub struct Focus {
 
 impl Focus {
     /// Creates a new Focus with a specific widget active.
+    #[must_use]
     pub const fn new(id: WidgetId) -> Self {
         Self { id: Some(id) }
-    }
-
-    /// Creates a new Focus with nothing active.
-    pub const fn none() -> Self {
-        Self { id: None }
     }
 
     /// Updates the focus. Accepts an Option<WidgetId>.
