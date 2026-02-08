@@ -157,28 +157,43 @@ fn render_help(frame: &mut Frame, world: &mut World, area: Rect) {
             .push(info);
     }
 
-    for (id, commands) in groups {
-        if !lines.is_empty() {
-            lines.push(Line::from(""));
-        }
-        lines.push(Line::from(Span::styled(
-            format!("[{}]", id.0),
-            Style::default().fg(accent),
-        )));
+    let render_group =
+        |lines: &mut Vec<Line>,
+         id: WidgetId,
+         commands: &BTreeMap<&'static str, Vec<&DisplayInfo>>| {
+            if !lines.is_empty() {
+                lines.push(Line::from(""));
+            }
+            lines.push(Line::from(Span::styled(
+                format!("[{}]", id.0),
+                Style::default().fg(accent),
+            )));
 
-        for (name, infos) in commands {
-            let keys = infos
-                .iter()
-                .map(|i| i.key.to_string())
-                .collect::<Vec<_>>()
-                .join("/");
+            for (name, infos) in commands {
+                let keys = infos
+                    .iter()
+                    .map(|i| i.key.to_string())
+                    .collect::<Vec<_>>()
+                    .join("/");
 
-            lines.push(Line::from(vec![
-                Span::styled(format!("{:>10}", keys), Style::default().fg(success)),
-                Span::raw("  "),
-                Span::styled(name, Style::default().fg(fg)),
-            ]));
+                lines.push(Line::from(vec![
+                    Span::styled(format!("{:>10}", keys), Style::default().fg(success)),
+                    Span::raw("  "),
+                    Span::styled(*name, Style::default().fg(fg)),
+                ]));
+            }
+        };
+
+    // Render non-global groups first
+    for (id, commands) in &groups {
+        if *id != GLOBAL_ID {
+            render_group(&mut lines, *id, commands);
         }
+    }
+
+    // Render global group last
+    if let Some(commands) = groups.get(&GLOBAL_ID) {
+        render_group(&mut lines, GLOBAL_ID, commands);
     }
 
     frame.render_widget(Paragraph::new(lines), inner);
