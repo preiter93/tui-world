@@ -1,0 +1,43 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [0.1.1] - 2026-02-08
+
+### 🚀 Features
+
+- *(keybindings)* Simplify keybinding context
+- *(pointer)* Merge layout and mouse into pointer
+- *(pointer)* Add drag event
+- *(focus)* Add "new" constructor
+- *(focus)* Add is_focused method
+
+### 🐛 Bug Fixes
+
+- *(keybindings)* Prevent duplicate keybindings
+
+### 📚 Documentation
+
+- *(example)* Improve todo example
+- *(example)* Add selectable text example
+- *(readme)* Simplify example
+- *(example)* Update help example to show global as last
+
+### 🔧 Refactor
+
+- *(keybindings)* Rename catch_all to bind_any
+- *(todo)* Setup click handlers in render
+- *(example)* Simplify todo example and add help example
+- *(pointer)* Pass area to click handlers
+
+### ⚙️ Miscellaneous Tasks
+
+- *(ci)* Add release workflow
+
+## [0.1.0] - 2026-01-17
+
+### 🚀 Features
+
+- Map " " to "Space"
+
+
