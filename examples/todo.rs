@@ -131,6 +131,7 @@ fn setup(world: &mut World) {
     world.insert(Focus::new(TODO_LIST_ID));
 
     setup_keybindings(world);
+    setup_pointer(world);
 }
 
 fn setup_keybindings(world: &mut World) {
@@ -211,12 +212,24 @@ fn setup_keybindings(world: &mut World) {
     });
 }
 
-fn get_active_ids(world: &World) -> Vec<WidgetId> {
-    let mut active = vec![GLOBAL_ID];
-    if let Some(id) = world.get::<Focus>().id {
-        active.push(id);
-    }
-    active
+fn setup_pointer(world: &mut World) {
+    world
+        .get_mut::<Pointer>()
+        .on_click(TODO_LIST_ID, |world, area, x, y| {
+            let row = (y - area.y) as usize;
+            let col = (x - area.x) as usize;
+            let state = world.get_mut::<TodoState>();
+
+            if row >= state.todos.len() {
+                return;
+            }
+
+            if (1..=3).contains(&col) {
+                state.todos[row].done ^= true;
+            } else {
+                state.selected = row;
+            }
+        });
 }
 
 fn render(frame: &mut Frame, world: &mut World) {
@@ -290,25 +303,6 @@ fn render_todo(frame: &mut Frame, world: &mut World, area: Rect) {
     frame.render_widget(Paragraph::new(lines), inner);
 
     world.get_mut::<Pointer>().set(TODO_LIST_ID, inner);
-    world
-        .get_mut::<Pointer>()
-        .on_click(TODO_LIST_ID, move |world, x, y| {
-            let clicked_index = y.saturating_sub(inner.y) as usize;
-            let todos_len = world.get::<TodoState>().todos.len();
-
-            if clicked_index >= todos_len {
-                return;
-            }
-
-            let relative_x = x.saturating_sub(inner.x);
-            if (1..=3).contains(&relative_x) {
-                if let Some(todo) = world.get_mut::<TodoState>().todos.get_mut(clicked_index) {
-                    todo.done = !todo.done;
-                }
-            } else {
-                world.get_mut::<TodoState>().selected = clicked_index;
-            }
-        });
 }
 
 fn render_dialog(frame: &mut Frame, world: &mut World, area: Rect) {
@@ -356,7 +350,10 @@ fn main() -> anyhow::Result<()> {
         terminal.draw(|frame| render(frame, &mut world))?;
 
         if event::poll(std::time::Duration::from_millis(16))? {
-            let active = get_active_ids(&world);
+            let mut active = vec![GLOBAL_ID];
+            if let Some(id) = world.get::<Focus>().id {
+                active.push(id);
+            }
 
             match event::read()? {
                 CEvent::Key(key) => Event::Key(key).handle(&mut world, &active),

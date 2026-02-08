@@ -167,7 +167,7 @@ impl SelectableText {
 
         world.get_mut::<Pointer>().set(id, area);
 
-        world.get_mut::<Pointer>().on_down(id, move |w, x, y| {
+        world.get_mut::<Pointer>().on_down(id, move |w, _, x, y| {
             let index = w.get::<Selections>().coords_to_index(id, x, y);
             if let Some(idx) = index {
                 let selections = w.get_mut::<Selections>();
@@ -176,7 +176,7 @@ impl SelectableText {
             }
         });
 
-        world.get_mut::<Pointer>().on_drag(id, move |w, x, y| {
+        world.get_mut::<Pointer>().on_drag(id, move |w, _, x, y| {
             let index = w.get::<Selections>().coords_to_index(id, x, y);
             let anchor = w.get::<Selections>().get_anchor(id);
             if let (Some(idx), Some(anchor)) = (index, anchor) {
@@ -184,7 +184,7 @@ impl SelectableText {
             }
         });
 
-        world.get_mut::<Pointer>().on_up(id, move |w, x, y| {
+        world.get_mut::<Pointer>().on_up(id, move |w, _, x, y| {
             let index = w.get::<Selections>().coords_to_index(id, x, y);
             let anchor = w.get::<Selections>().get_anchor(id);
             if let (Some(idx), Some(anchor)) = (index, anchor) {

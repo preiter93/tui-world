@@ -32,11 +32,11 @@ impl Event {
                         world.get_mut::<Pointer>().set_active(hit);
 
                         if let Some(widget_id) = hit {
-                            let handler = world
-                                .get::<Pointer>()
-                                .get_handler_for(widget_id, mouse.kind);
-                            if let Some(f) = handler {
-                                f(world, x, y);
+                            let pointer = world.get::<Pointer>();
+                            let area = pointer.get(widget_id).copied();
+                            let handler = pointer.get_handler_for(widget_id, mouse.kind);
+                            if let (Some(area), Some(f)) = (area, handler) {
+                                f(world, area, x, y);
                             }
                         }
                     }
@@ -44,11 +44,11 @@ impl Event {
                         // Drag events go to the widget that received mouse down
                         let active = world.get::<Pointer>().active();
                         if let Some(widget_id) = active {
-                            let handler = world
-                                .get::<Pointer>()
-                                .get_handler_for(widget_id, mouse.kind);
-                            if let Some(f) = handler {
-                                f(world, x, y);
+                            let pointer = world.get::<Pointer>();
+                            let area = pointer.get(widget_id).copied();
+                            let handler = pointer.get_handler_for(widget_id, mouse.kind);
+                            if let (Some(area), Some(f)) = (area, handler) {
+                                f(world, area, x, y);
                             }
                         }
                     }
@@ -56,11 +56,11 @@ impl Event {
                         // Up events go to the widget that received mouse down
                         let active = world.get::<Pointer>().active();
                         if let Some(widget_id) = active {
-                            let handler = world
-                                .get::<Pointer>()
-                                .get_handler_for(widget_id, mouse.kind);
-                            if let Some(f) = handler {
-                                f(world, x, y);
+                            let pointer = world.get::<Pointer>();
+                            let area = pointer.get(widget_id).copied();
+                            let handler = pointer.get_handler_for(widget_id, mouse.kind);
+                            if let (Some(area), Some(f)) = (area, handler) {
+                                f(world, area, x, y);
                             }
                         }
                         // Clear active widget on mouse up

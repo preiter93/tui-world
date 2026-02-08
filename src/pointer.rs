@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 pub use crossterm::event::MouseEventKind;
 
-pub type PointerFn = Arc<dyn Fn(&mut World, u16, u16) + Send + Sync>;
+pub type PointerFn = Arc<dyn Fn(&mut World, Area, u16, u16) + Send + Sync>;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Area {
@@ -94,7 +94,7 @@ impl Pointer {
     /// Registers a click (mouse down) handler for a widget.
     pub fn on_click<F>(&mut self, id: WidgetId, handler: F)
     where
-        F: Fn(&mut World, u16, u16) + Send + Sync + 'static,
+        F: Fn(&mut World, Area, u16, u16) + Send + Sync + 'static,
     {
         self.handlers.entry(id).or_default().down = Some(Arc::new(handler));
     }
@@ -102,7 +102,7 @@ impl Pointer {
     /// Registers a mouse down handler for a widget.
     pub fn on_down<F>(&mut self, id: WidgetId, handler: F)
     where
-        F: Fn(&mut World, u16, u16) + Send + Sync + 'static,
+        F: Fn(&mut World, Area, u16, u16) + Send + Sync + 'static,
     {
         self.on_click(id, handler);
     }
@@ -111,7 +111,7 @@ impl Pointer {
     /// This is called when mouse moves while button is held down.
     pub fn on_drag<F>(&mut self, id: WidgetId, handler: F)
     where
-        F: Fn(&mut World, u16, u16) + Send + Sync + 'static,
+        F: Fn(&mut World, Area, u16, u16) + Send + Sync + 'static,
     {
         self.handlers.entry(id).or_default().drag = Some(Arc::new(handler));
     }
@@ -119,7 +119,7 @@ impl Pointer {
     /// Registers a mouse up handler for a widget.
     pub fn on_up<F>(&mut self, id: WidgetId, handler: F)
     where
-        F: Fn(&mut World, u16, u16) + Send + Sync + 'static,
+        F: Fn(&mut World, Area, u16, u16) + Send + Sync + 'static,
     {
         self.handlers.entry(id).or_default().up = Some(Arc::new(handler));
     }
