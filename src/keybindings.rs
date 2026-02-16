@@ -203,7 +203,7 @@ impl KeyBinding {
                 if c == ' ' {
                     return "Space".to_string();
                 }
-                c.to_string()
+                c.to_ascii_lowercase().to_string()
             }
             KeyCode::Up => "↑".to_string(),
             KeyCode::Down => "↓".to_string(),
