@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.2] - 2026-02-16
+
+### 🚀 Features
+
+- *(keybindings)* Auto-add SHIFT modifier for uppercase char conversions
+
 ## [0.1.1] - 2026-02-08
 
 ### 🚀 Features
