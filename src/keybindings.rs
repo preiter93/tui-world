@@ -245,7 +245,11 @@ impl From<KeyCode> for KeyBinding {
 
 impl From<char> for KeyBinding {
     fn from(c: char) -> Self {
-        Self::key(KeyCode::Char(c))
+        if c.is_ascii_uppercase() {
+            Self::new(KeyCode::Char(c), KeyModifiers::SHIFT)
+        } else {
+            Self::key(KeyCode::Char(c))
+        }
     }
 }
 
