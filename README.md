@@ -14,9 +14,6 @@ A state and event management library for TUIs built with [ratatui](https://githu
 ## Example
 
 ```rust
-use crossterm::event::KeyCode;
-use tui_world::prelude::*;
-
 const GLOBAL_ID: WidgetId = WidgetId("Global");
 const WIDGET_ID: WidgetId = WidgetId("MyWidget");
 
