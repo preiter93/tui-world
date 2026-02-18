@@ -45,8 +45,8 @@ fn main() -> anyhow::Result<()> {
 
         if event::poll(std::time::Duration::from_millis(16))? {
             match event::read()? {
-                CEvent::Key(key) => Event::Key(key).handle(&mut world, &[TEXT_ID]),
-                CEvent::Mouse(mouse) => Event::Mouse(mouse).handle(&mut world, &[TEXT_ID]),
+                CEvent::Key(key) => InputEvent::Key(key).handle(&mut world, &[TEXT_ID]),
+                CEvent::Mouse(mouse) => InputEvent::Mouse(mouse).handle(&mut world, &[TEXT_ID]),
                 _ => {}
             }
         }

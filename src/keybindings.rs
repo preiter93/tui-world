@@ -19,9 +19,21 @@ pub type AnyKeyFn = Box<dyn Fn(&mut World, &KeyBinding) + Send + Sync>;
 
 #[derive(Debug)]
 pub struct DisplayInfo {
-    pub key: KeyBinding,
+    pub keys: Vec<KeyBinding>,
     pub id: WidgetId,
     pub name: &'static str,
+}
+
+impl DisplayInfo {
+    /// Returns a formatted string of all keys, e.g. "j, k, ↓"
+    #[must_use]
+    pub fn keys_display(&self) -> String {
+        self.keys
+            .iter()
+            .map(KeyBinding::display)
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
 }
 
 struct Binding {
@@ -126,27 +138,58 @@ impl Keybindings {
         self.bindings.retain(|b| b.id != id);
     }
 
+    /// Returns keybindings grouped by name for the given widget IDs.
+    /// Keys with the same name and widget ID are grouped together.
     #[must_use]
-    pub fn display_for(&self, id: &[WidgetId]) -> Vec<DisplayInfo> {
-        self.bindings
-            .iter()
-            .filter(|b| id.contains(&b.id))
-            .map(|b| DisplayInfo {
-                key: b.key,
-                id: b.id,
-                name: b.name,
+    pub fn display_for(&self, ids: &[WidgetId]) -> Vec<DisplayInfo> {
+        use std::collections::HashMap;
+
+        let mut groups: HashMap<(WidgetId, &'static str), Vec<KeyBinding>> = HashMap::new();
+        let mut order: Vec<(WidgetId, &'static str)> = Vec::new();
+
+        for binding in &self.bindings {
+            if ids.contains(&binding.id) {
+                let key = (binding.id, binding.name);
+                if !groups.contains_key(&key) {
+                    order.push(key);
+                }
+                groups.entry(key).or_default().push(binding.key);
+            }
+        }
+
+        order
+            .into_iter()
+            .map(|(id, name)| DisplayInfo {
+                keys: groups.remove(&(id, name)).unwrap_or_default(),
+                id,
+                name,
             })
             .collect()
     }
 
+    /// Returns all keybindings grouped by name.
+    /// Keys with the same name and widget ID are grouped together.
     #[must_use]
     pub fn display_all(&self) -> Vec<DisplayInfo> {
-        self.bindings
-            .iter()
-            .map(|b| DisplayInfo {
-                key: b.key,
-                id: b.id,
-                name: b.name,
+        use std::collections::HashMap;
+
+        let mut groups: HashMap<(WidgetId, &'static str), Vec<KeyBinding>> = HashMap::new();
+        let mut order: Vec<(WidgetId, &'static str)> = Vec::new();
+
+        for binding in &self.bindings {
+            let key = (binding.id, binding.name);
+            if !groups.contains_key(&key) {
+                order.push(key);
+            }
+            groups.entry(key).or_default().push(binding.key);
+        }
+
+        order
+            .into_iter()
+            .map(|(id, name)| DisplayInfo {
+                keys: groups.remove(&(id, name)).unwrap_or_default(),
+                id,
+                name,
             })
             .collect()
     }

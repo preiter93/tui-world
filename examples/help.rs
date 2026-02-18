@@ -146,43 +146,32 @@ fn render_help(frame: &mut Frame, world: &mut World, area: Rect) {
     let display = keybindings.display_for(&active);
 
     let mut lines: Vec<Line> = Vec::new();
-    let mut groups: BTreeMap<WidgetId, BTreeMap<&'static str, Vec<&DisplayInfo>>> = BTreeMap::new();
+    let mut groups: BTreeMap<WidgetId, Vec<&DisplayInfo>> = BTreeMap::new();
 
     for info in &display {
-        groups
-            .entry(info.id)
-            .or_default()
-            .entry(info.name)
-            .or_default()
-            .push(info);
+        groups.entry(info.id).or_default().push(info);
     }
 
-    let render_group =
-        |lines: &mut Vec<Line>,
-         id: WidgetId,
-         commands: &BTreeMap<&'static str, Vec<&DisplayInfo>>| {
-            if !lines.is_empty() {
-                lines.push(Line::from(""));
-            }
-            lines.push(Line::from(Span::styled(
-                format!("[{}]", id.0),
-                Style::default().fg(accent),
-            )));
+    let render_group = |lines: &mut Vec<Line>, id: WidgetId, commands: &[&DisplayInfo]| {
+        if !lines.is_empty() {
+            lines.push(Line::from(""));
+        }
+        lines.push(Line::from(Span::styled(
+            format!("[{}]", id.0),
+            Style::default().fg(accent),
+        )));
 
-            for (name, infos) in commands {
-                let keys = infos
-                    .iter()
-                    .map(|i| i.key.to_string())
-                    .collect::<Vec<_>>()
-                    .join("/");
-
-                lines.push(Line::from(vec![
-                    Span::styled(format!("{:>10}", keys), Style::default().fg(success)),
-                    Span::raw("  "),
-                    Span::styled(*name, Style::default().fg(fg)),
-                ]));
-            }
-        };
+        for info in commands {
+            lines.push(Line::from(vec![
+                Span::styled(
+                    format!("{:>10}", info.keys_display()),
+                    Style::default().fg(success),
+                ),
+                Span::raw("  "),
+                Span::styled(info.name, Style::default().fg(fg)),
+            ]));
+        }
+    };
 
     // Render non-global groups first
     for (id, commands) in &groups {
@@ -212,7 +201,7 @@ fn main() -> anyhow::Result<()> {
             let active = get_active_ids(&world);
 
             if let CEvent::Key(key) = event::read()? {
-                Event::Key(key).handle(&mut world, &active);
+                InputEvent::Key(key).handle(&mut world, &active);
             }
         }
 

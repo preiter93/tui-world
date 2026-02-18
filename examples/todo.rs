@@ -356,8 +356,8 @@ fn main() -> anyhow::Result<()> {
             }
 
             match event::read()? {
-                CEvent::Key(key) => Event::Key(key).handle(&mut world, &active),
-                CEvent::Mouse(mouse) => Event::Mouse(mouse).handle(&mut world, &active),
+                CEvent::Key(key) => InputEvent::Key(key).handle(&mut world, &active),
+                CEvent::Mouse(mouse) => InputEvent::Mouse(mouse).handle(&mut world, &active),
                 _ => {}
             }
         }
