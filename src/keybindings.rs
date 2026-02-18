@@ -26,11 +26,44 @@ pub struct DisplayInfo {
 
 impl DisplayInfo {
     /// Returns a formatted string of all keys, e.g. "j, k, ↓"
+    ///
+    /// # Example
+    /// ```ignore
+    /// // Returns "Shift+h, j, k"
+    /// info.keys_display()
+    /// ```
     #[must_use]
     pub fn keys_display(&self) -> String {
+        self.keys_display_with(KeyBinding::display)
+    }
+
+    /// Returns a compact formatted string of all keys, e.g. "⇧h, ⌃c, ↓"
+    ///
+    /// # Example
+    /// ```ignore
+    /// // Returns "⇧h, j, k"
+    /// info.keys_display_compact()
+    /// ```
+    #[must_use]
+    pub fn keys_display_compact(&self) -> String {
+        self.keys_display_with(KeyBinding::display_compact)
+    }
+
+    /// Returns a formatted string of all keys using a custom formatter.
+    ///
+    /// # Example
+    /// ```ignore
+    /// // Compact: "H, j, k" (Shift+letter shown as uppercase)
+    /// info.keys_display_with(KeyBinding::display_compact)
+    ///
+    /// // Custom formatter: "[↑], [↓]"
+    /// info.keys_display_with(|k| format!("[{}]", k.display()))
+    /// ```
+    #[must_use]
+    pub fn keys_display_with(&self, formatter: impl Fn(&KeyBinding) -> String) -> String {
         self.keys
             .iter()
-            .map(KeyBinding::display)
+            .map(formatter)
             .collect::<Vec<_>>()
             .join(", ")
     }
@@ -227,6 +260,55 @@ impl KeyBinding {
         Self::new(KeyCode::Char(c), KeyModifiers::SHIFT)
     }
 
+    /// Returns a compact display string using symbols for modifiers.
+    /// - Shift → `⇧`
+    /// - Ctrl → `⌃`
+    /// - Alt → `⌥`
+    ///
+    /// Examples: `⇧Tab`, `⌃c`, `⌥x`, `⇧H`
+    #[must_use]
+    pub fn display_compact(&self) -> String {
+        let mut parts = String::new();
+
+        if self.modifiers.contains(KeyModifiers::CONTROL) {
+            parts.push('⌃');
+        }
+        if self.modifiers.contains(KeyModifiers::ALT) {
+            parts.push('⌥');
+        }
+        if self.modifiers.contains(KeyModifiers::SHIFT) {
+            parts.push('⇧');
+        }
+
+        let key = match self.code {
+            KeyCode::Char(c) => {
+                if c == ' ' {
+                    "Space".to_string()
+                } else {
+                    c.to_ascii_lowercase().to_string()
+                }
+            }
+            KeyCode::Up => "↑".to_string(),
+            KeyCode::Down => "↓".to_string(),
+            KeyCode::Left => "←".to_string(),
+            KeyCode::Right => "→".to_string(),
+            KeyCode::Enter => "⏎".to_string(),
+            KeyCode::Esc => "Esc".to_string(),
+            KeyCode::BackTab | KeyCode::Tab => "Tab".to_string(),
+            KeyCode::Backspace => "⌫".to_string(),
+            KeyCode::Delete => "Del".to_string(),
+            KeyCode::Home => "Home".to_string(),
+            KeyCode::End => "End".to_string(),
+            KeyCode::PageUp => "PgUp".to_string(),
+            KeyCode::PageDown => "PgDn".to_string(),
+            KeyCode::F(n) => format!("F{n}"),
+            _ => format!("{:?}", self.code),
+        };
+
+        parts.push_str(&key);
+        parts
+    }
+
     #[must_use]
     pub fn display(&self) -> String {
         let mut parts = Vec::new();
@@ -255,6 +337,7 @@ impl KeyBinding {
             KeyCode::Enter => "Enter".to_string(),
             KeyCode::Esc => "Esc".to_string(),
             KeyCode::Tab => "Tab".to_string(),
+            KeyCode::BackTab => "Shift+Tab".to_string(),
             KeyCode::Backspace => "Backspace".to_string(),
             KeyCode::Delete => "Delete".to_string(),
             KeyCode::Home => "Home".to_string(),
