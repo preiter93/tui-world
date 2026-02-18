@@ -2,13 +2,13 @@ use crate::{Keybindings, Pointer, WidgetId, World};
 use crossterm::event::{KeyEvent, MouseEvent, MouseEventKind};
 
 #[derive(Debug)]
-pub enum Event {
+pub enum InputEvent {
     Key(KeyEvent),
     Mouse(MouseEvent),
     Tick,
 }
 
-impl Event {
+impl InputEvent {
     /// Handles the event by dispatching to the appropriate handler.
     ///
     /// # Panics
@@ -16,13 +16,13 @@ impl Event {
     /// Panics if the `Keybindings` resource is not present in the world.
     pub fn handle(self, world: &mut World, ids: &[WidgetId]) {
         match self {
-            Event::Key(key) => {
+            InputEvent::Key(key) => {
                 let binding = (&key).into();
                 let keybindings = world.remove::<Keybindings>().unwrap();
                 keybindings.handle(&binding, world, ids);
                 world.insert(keybindings);
             }
-            Event::Mouse(mouse) => {
+            InputEvent::Mouse(mouse) => {
                 let x = mouse.column;
                 let y = mouse.row;
 
@@ -69,7 +69,7 @@ impl Event {
                     _ => {}
                 }
             }
-            Event::Tick => {}
+            InputEvent::Tick => {}
         }
     }
 }

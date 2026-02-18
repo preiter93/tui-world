@@ -73,19 +73,6 @@ impl Keybindings {
         });
     }
 
-    /// Binds a handler that fires for any key press on the given widget
-    /// when no specific binding matches.
-    pub fn bind_any(
-        &mut self,
-        id: WidgetId,
-        handler: impl Fn(&mut World, &KeyBinding) + Send + Sync + 'static,
-    ) {
-        self.any_key_handlers.push(AnyKeyHandler {
-            id,
-            handler: Box::new(handler),
-        });
-    }
-
     /// Binds multiple keys to the same action.
     pub fn bind_many(
         &mut self,
@@ -97,6 +84,19 @@ impl Keybindings {
         for key in keys.into().0 {
             self.bind(id, key, name, action.clone());
         }
+    }
+
+    /// Binds a handler that fires for any key press on the given widget
+    /// when no specific binding matches.
+    pub fn bind_any(
+        &mut self,
+        id: WidgetId,
+        handler: impl Fn(&mut World, &KeyBinding) + Send + Sync + 'static,
+    ) {
+        self.any_key_handlers.push(AnyKeyHandler {
+            id,
+            handler: Box::new(handler),
+        });
     }
 
     pub fn handle(&self, key: &KeyBinding, world: &mut World, ids: &[WidgetId]) -> bool {

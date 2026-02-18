@@ -1,11 +1,11 @@
-mod event;
 mod focus;
+mod input_event;
 mod keybindings;
 mod pointer;
 mod world;
 
-pub use event::Event;
 pub use focus::Focus;
+pub use input_event::InputEvent;
 pub use keybindings::{DisplayInfo, KeyBinding, Keybindings, Keys};
 pub use pointer::{Area, Pointer};
 pub use world::World;
@@ -16,8 +16,8 @@ pub struct WidgetId(pub &'static str);
 pub mod prelude {
     pub use crate::Area;
     pub use crate::DisplayInfo;
-    pub use crate::Event;
     pub use crate::Focus;
+    pub use crate::InputEvent;
     pub use crate::KeyBinding;
     pub use crate::Keybindings;
     pub use crate::Pointer;
