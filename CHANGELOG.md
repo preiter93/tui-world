@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.3] - 2026-02-18
+
+### 🚀 Features
+
+- *(kb-display)* Add a compact display version
+
+### 🐛 Bug Fixes
+
+- *(keybindings)* Display Shift+letter with letter as lowercase
+
+### 🔧 Refactor
+
+- *(event)* Rename Event to InputEvent to avoid naming conflicts
+- *(keybindings)* Group DisplayInfo by action
+
 ## [0.1.2] - 2026-02-16
 
 ### 🚀 Features
