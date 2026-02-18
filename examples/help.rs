@@ -1,4 +1,4 @@
-use crossterm::event::{self, Event as CEvent, KeyCode};
+use crossterm::event::{self, Event as CrosstermEvent, KeyCode};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
@@ -6,7 +6,6 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
 };
-use std::collections::BTreeMap;
 use tui_world::prelude::*;
 
 const GLOBAL_ID: WidgetId = WidgetId("Global");
@@ -142,47 +141,31 @@ fn render_help(frame: &mut Frame, world: &mut World, area: Rect) {
     frame.render_widget(block, dialog_area);
 
     let active = get_active_ids(world);
-    let keybindings = world.get::<Keybindings>();
-    let display = keybindings.display_for(&active);
+    let display = world.get::<Keybindings>().display_for(&active);
 
     let mut lines: Vec<Line> = Vec::new();
-    let mut groups: BTreeMap<WidgetId, Vec<&DisplayInfo>> = BTreeMap::new();
+    let mut current_id: Option<WidgetId> = None;
 
     for info in &display {
-        groups.entry(info.id).or_default().push(info);
-    }
-
-    let render_group = |lines: &mut Vec<Line>, id: WidgetId, commands: &[&DisplayInfo]| {
-        if !lines.is_empty() {
-            lines.push(Line::from(""));
+        if current_id != Some(info.id) {
+            if current_id.is_some() {
+                lines.push(Line::from(""));
+            }
+            lines.push(Line::from(Span::styled(
+                format!("[{}]", info.id.0),
+                Style::default().fg(accent),
+            )));
+            current_id = Some(info.id);
         }
-        lines.push(Line::from(Span::styled(
-            format!("[{}]", id.0),
-            Style::default().fg(accent),
-        )));
 
-        for info in commands {
-            lines.push(Line::from(vec![
-                Span::styled(
-                    format!("{:>10}", info.keys_display_compact()),
-                    Style::default().fg(success),
-                ),
-                Span::raw("  "),
-                Span::styled(info.name, Style::default().fg(fg)),
-            ]));
-        }
-    };
-
-    // Render non-global groups first
-    for (id, commands) in &groups {
-        if *id != GLOBAL_ID {
-            render_group(&mut lines, *id, commands);
-        }
-    }
-
-    // Render global group last
-    if let Some(commands) = groups.get(&GLOBAL_ID) {
-        render_group(&mut lines, GLOBAL_ID, commands);
+        lines.push(Line::from(vec![
+            Span::styled(
+                format!("{:>10}", info.keys_display_compact()),
+                Style::default().fg(success),
+            ),
+            Span::raw("  "),
+            Span::styled(info.name, Style::default().fg(fg)),
+        ]));
     }
 
     frame.render_widget(Paragraph::new(lines), inner);
@@ -200,7 +183,7 @@ fn main() -> anyhow::Result<()> {
         if event::poll(std::time::Duration::from_millis(16))? {
             let active = get_active_ids(&world);
 
-            if let CEvent::Key(key) = event::read()? {
+            if let CrosstermEvent::Key(key) = event::read()? {
                 InputEvent::Key(key).handle(&mut world, &active);
             }
         }
