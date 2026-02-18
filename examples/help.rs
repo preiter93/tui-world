@@ -164,7 +164,7 @@ fn render_help(frame: &mut Frame, world: &mut World, area: Rect) {
         for info in commands {
             lines.push(Line::from(vec![
                 Span::styled(
-                    format!("{:>10}", info.keys_display()),
+                    format!("{:>10}", info.keys_display_compact()),
                     Style::default().fg(success),
                 ),
                 Span::raw("  "),
