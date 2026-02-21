@@ -30,7 +30,7 @@ impl Focus {
         Self { id: Some(id) }
     }
 
-    /// Updates the focus. Accepts an Option<WidgetId>.
+    /// Updates the focus. Accepts an `Option<WidgetId>`.
     pub fn set(&mut self, id: impl Into<Option<WidgetId>>) {
         self.id = id.into();
     }
