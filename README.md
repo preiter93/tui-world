@@ -7,8 +7,6 @@
 [![Dependencies](https://deps.rs/repo/github/preiter93/tui-world/status.svg?style=flat-square)](https://deps.rs/repo/github/preiter93/tui-world)
 [![License](https://img.shields.io/crates/l/tui-world?style=flat-square&color=09bd66)](./LICENSE)
 
-> ⚠️ **Work in Progress**
-
 A state and event management library for TUIs built with [ratatui](https://github.com/ratatui/ratatui).
 
 ## Core Concepts
