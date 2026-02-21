@@ -24,16 +24,15 @@
 ## Example
 
 ```rust
-const GLOBAL_ID: WidgetId = WidgetId("Global");
 const WIDGET_ID: WidgetId = WidgetId("MyWidget");
+
+let mut world = World::default();
 
 // Store state in world
 world.insert(MyAppState::default());
 
 // Register keybindings
-let kb = world.get_mut::<Keybindings>();
-
-kb.bind(WIDGET_ID, KeyCode::Enter, "Select", |world| {
+world.get_mut::<Keybindings>().bind(WIDGET_ID, KeyCode::Enter, "Select", |world| {
     world.get_mut::<MyAppState>().select();
 });
 
@@ -42,22 +41,24 @@ if world.get::<Focus>().is_focused(WIDGET_ID) {
     // widget has focus
 }
 
+// Handle key events
+InputEvent::Key(key).handle(&mut world, &[WIDGET_ID]);
+```
+
+### Mouse Handling
+
+```rust
 // Register click handlers
 world.get_mut::<Pointer>().on_click(WIDGET_ID, |world, area, x, y| {
     let clicked_index = y.saturating_sub(area.y) as usize;
     world.get_mut::<MyAppState>().select(clicked_index);
 });
 
-// Register widgets area in render function
+// Register widget area in render function
 world.get_mut::<Pointer>().set(WIDGET_ID, area);
 
-// Handle events with global + focused widget
-let mut active = vec![GLOBAL_ID];
-if let Some(id) = world.get::<Focus>().id {
-    active.push(id);
-}
-Event::Key(key).handle(&mut world, &active);
-Event::Mouse(mouse).handle(&mut world, &active);
+// Handle mouse events
+InputEvent::Mouse(mouse).handle(&mut world, &[WIDGET_ID]);
 ```
 
 See `examples/todo` and `examples/help.rs` for complete examples.
