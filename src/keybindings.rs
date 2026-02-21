@@ -63,6 +63,20 @@ impl Keybindings {
         }
     }
 
+    /// Registers a keybinding for a specific widget.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// world.get_mut::<Keybindings>().bind(
+    ///     WidgetId("list"),
+    ///     KeyCode::Enter,
+    ///     "Select item",
+    ///     |world| {
+    ///         world.get_mut::<MyState>().select();
+    ///     },
+    /// );
+    /// ```
     pub fn bind(
         &mut self,
         id: WidgetId,
@@ -81,6 +95,19 @@ impl Keybindings {
     }
 
     /// Binds multiple keys to the same action.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// world.get_mut::<Keybindings>().bind_many(
+    ///     WidgetId("list"),
+    ///     [KeyCode::Char('j'), KeyCode::Down],
+    ///     "Move down",
+    ///     |world| {
+    ///         world.get_mut::<MyState>().move_down();
+    ///     },
+    /// );
+    /// ```
     pub fn bind_many(
         &mut self,
         id: WidgetId,
@@ -95,6 +122,19 @@ impl Keybindings {
 
     /// Binds a handler that fires for any key press on the given widget
     /// when no specific binding matches.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// world.get_mut::<Keybindings>().bind_any(
+    ///     WidgetId("input"),
+    ///     |world, key| {
+    ///         if let KeyBinding { code: KeyCode::Char(c), .. } = key {
+    ///             world.get_mut::<InputState>().push(*c);
+    ///         }
+    ///     },
+    /// );
+    /// ```
     pub fn bind_any(
         &mut self,
         id: WidgetId,
@@ -106,6 +146,13 @@ impl Keybindings {
         });
     }
 
+    /// Dispatches a key event to matching keybindings.
+    ///
+    /// This method is called internally and should typically not be invoked directly.
+    /// Use [`InputEvent::Key`](crate::InputEvent::Key) instead, which handles
+    /// dispatching to both keybindings and other input handlers.
+    ///
+    /// Returns `true` if a matching binding was found and executed.
     pub fn handle(&self, key: &KeyBinding, world: &mut World, ids: &[WidgetId]) -> bool {
         for binding in &self.bindings {
             if binding.key != *key {
