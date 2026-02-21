@@ -3,6 +3,26 @@ use std::collections::HashMap;
 
 use crate::{Focus, Keybindings, Pointer};
 
+/// A type-safe container for storing and retrieving resources by their type.
+///
+/// `World` acts as a central storage for application state, allowing you to insert,
+/// retrieve, and remove resources of any type. Each type can only have one instance
+/// stored at a time.
+///
+/// By default, `World` is initialized with [`Focus`], [`Keybindings`], and [`Pointer`]
+/// resources.
+///
+/// # Example
+///
+/// ```ignore
+/// let mut world = World::default();
+///
+/// // Insert a custom resource
+/// world.insert(MyAppState::new());
+///
+/// // Retrieve it later
+/// let state = world.get::<MyAppState>();
+/// ```
 pub struct World {
     resources: HashMap<TypeId, Box<dyn Any>>,
 }

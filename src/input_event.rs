@@ -1,10 +1,30 @@
 use crate::{Keybindings, Pointer, WidgetId, World};
 use crossterm::event::{KeyEvent, MouseEvent, MouseEventKind};
 
+/// An input event that can be handled by the application.
+///
+/// `InputEvent` wraps the different types of input the application can receive:
+/// keyboard events, mouse events, and periodic tick events for animations or updates.
+///
+/// Use [`handle`](InputEvent::handle) to dispatch the event to the appropriate
+/// keybinding or pointer handler.
+///
+/// # Example
+///
+/// ```ignore
+/// match crossterm::event::read()? {
+///     Event::Key(key) => InputEvent::Key(key).handle(&mut world, &active_widgets),
+///     Event::Mouse(mouse) => InputEvent::Mouse(mouse).handle(&mut world, &active_widgets),
+///     _ => {}
+/// }
+/// ```
 #[derive(Debug)]
 pub enum InputEvent {
+    /// A keyboard event.
     Key(KeyEvent),
+    /// A mouse event (click, drag, scroll, etc.).
     Mouse(MouseEvent),
+    /// A periodic tick event for animations or timed updates.
     Tick,
 }
 

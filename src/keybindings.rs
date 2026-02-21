@@ -17,58 +17,6 @@ macro_rules! keys {
 pub type ActionFn = Box<dyn Fn(&mut World) + Send + Sync>;
 pub type AnyKeyFn = Box<dyn Fn(&mut World, &KeyBinding) + Send + Sync>;
 
-#[derive(Debug)]
-pub struct DisplayInfo {
-    pub keys: Vec<KeyBinding>,
-    pub id: WidgetId,
-    pub name: &'static str,
-}
-
-impl DisplayInfo {
-    /// Returns a formatted string of all keys, e.g. "j, k, ↓"
-    ///
-    /// # Example
-    /// ```ignore
-    /// // Returns "Shift+h, j, k"
-    /// info.keys_display()
-    /// ```
-    #[must_use]
-    pub fn keys_display(&self) -> String {
-        self.keys_display_with(KeyBinding::display)
-    }
-
-    /// Returns a compact formatted string of all keys, e.g. "⇧h, ⌃c, ↓"
-    ///
-    /// # Example
-    /// ```ignore
-    /// // Returns "⇧h, j, k"
-    /// info.keys_display_compact()
-    /// ```
-    #[must_use]
-    pub fn keys_display_compact(&self) -> String {
-        self.keys_display_with(KeyBinding::display_compact)
-    }
-
-    /// Returns a formatted string of all keys using a custom formatter.
-    ///
-    /// # Example
-    /// ```ignore
-    /// // Compact: "H, j, k" (Shift+letter shown as uppercase)
-    /// info.keys_display_with(KeyBinding::display_compact)
-    ///
-    /// // Custom formatter: "[↑], [↓]"
-    /// info.keys_display_with(|k| format!("[{}]", k.display()))
-    /// ```
-    #[must_use]
-    pub fn keys_display_with(&self, formatter: impl Fn(&KeyBinding) -> String) -> String {
-        self.keys
-            .iter()
-            .map(formatter)
-            .collect::<Vec<_>>()
-            .join(", ")
-    }
-}
-
 struct Binding {
     key: KeyBinding,
     id: WidgetId,
@@ -81,6 +29,20 @@ struct AnyKeyHandler {
     handler: AnyKeyFn,
 }
 
+/// A registry of keyboard shortcuts mapped to actions for different widgets.
+///
+/// `Keybindings` manages the association between key combinations and their
+/// corresponding actions, scoped by widget ID. It supports:
+/// - Single key bindings via [`bind`](Keybindings::bind)
+/// - Multiple keys for the same action via [`bind_many`](Keybindings::bind_many)
+/// - Catch-all handlers via [`bind_any`](Keybindings::bind_any)
+///
+/// # Example
+/// ```ignore
+/// let mut kb = Keybindings::new();
+/// kb.bind(WidgetId("list"), 'j', "Down", |world| { /* move down */ });
+/// kb.bind_many(WidgetId("list"), keys![KeyCode::Up, 'k'], "Up", |world| { /* move up */ });
+/// ```
 pub struct Keybindings {
     bindings: Vec<Binding>,
     any_key_handlers: Vec<AnyKeyHandler>,
@@ -228,6 +190,25 @@ impl Keybindings {
     }
 }
 
+/// Represents a keyboard shortcut consisting of a key code and optional modifiers.
+///
+/// `KeyBinding` can be created from:
+/// - A [`KeyCode`] directly (no modifiers)
+/// - A `char` (uppercase letters automatically include Shift modifier)
+/// - A [`KeyEvent`] reference
+///
+/// # Example
+/// ```ignore
+/// // Simple character key
+/// let key: KeyBinding = 'j'.into();
+///
+/// // With modifiers
+/// let ctrl_c = KeyBinding::ctrl('c');
+/// let shift_tab = KeyBinding::new(KeyCode::Tab, KeyModifiers::SHIFT);
+///
+/// // Uppercase automatically includes Shift
+/// let shift_h: KeyBinding = 'H'.into();
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct KeyBinding {
     pub code: KeyCode,
@@ -379,7 +360,18 @@ impl From<char> for KeyBinding {
     }
 }
 
-/// A collection of keybindings for use with `bind_many`.
+/// A collection of keybindings for use with [`Keybindings::bind_many`].
+///
+/// Can be created using the [`keys!`] macro or converted from a `Vec<KeyBinding>`.
+///
+/// # Example
+/// ```ignore
+/// // Using the keys! macro
+/// kb.bind_many(id, keys![KeyCode::Up, 'k'], "Up", |world| { });
+///
+/// // From a vector
+/// let keys: Keys = vec![KeyBinding::key(KeyCode::Up), 'k'.into()].into();
+/// ```
 #[derive(Debug, Clone)]
 pub struct Keys(pub Vec<KeyBinding>);
 
@@ -392,5 +384,61 @@ impl From<Vec<KeyBinding>> for Keys {
 impl std::fmt::Display for KeyBinding {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.display())
+    }
+}
+
+/// Information about keybindings for display purposes.
+///
+/// Groups multiple keys that perform the same action together,
+/// along with the widget ID and action name for UI presentation.
+#[derive(Debug)]
+pub struct DisplayInfo {
+    pub keys: Vec<KeyBinding>,
+    pub id: WidgetId,
+    pub name: &'static str,
+}
+
+impl DisplayInfo {
+    /// Returns a formatted string of all keys, e.g. "j, k, ↓"
+    ///
+    /// # Example
+    /// ```ignore
+    /// // Returns "Shift+h, j, k"
+    /// info.keys_display()
+    /// ```
+    #[must_use]
+    pub fn keys_display(&self) -> String {
+        self.keys_display_with(KeyBinding::display)
+    }
+
+    /// Returns a compact formatted string of all keys, e.g. "⇧h, ⌃c, ↓"
+    ///
+    /// # Example
+    /// ```ignore
+    /// // Returns "⇧h, j, k"
+    /// info.keys_display_compact()
+    /// ```
+    #[must_use]
+    pub fn keys_display_compact(&self) -> String {
+        self.keys_display_with(KeyBinding::display_compact)
+    }
+
+    /// Returns a formatted string of all keys using a custom formatter.
+    ///
+    /// # Example
+    /// ```ignore
+    /// // Compact: "H, j, k" (Shift+letter shown as uppercase)
+    /// info.keys_display_with(KeyBinding::display_compact)
+    ///
+    /// // Custom formatter: "[↑], [↓]"
+    /// info.keys_display_with(|k| format!("[{}]", k.display()))
+    /// ```
+    #[must_use]
+    pub fn keys_display_with(&self, formatter: impl Fn(&KeyBinding) -> String) -> String {
+        self.keys
+            .iter()
+            .map(formatter)
+            .collect::<Vec<_>>()
+            .join(", ")
     }
 }

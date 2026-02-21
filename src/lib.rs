@@ -10,6 +10,16 @@ pub use keybindings::{DisplayInfo, KeyBinding, Keybindings, Keys};
 pub use pointer::{Area, Pointer};
 pub use world::World;
 
+/// A unique identifier for a widget in the application.
+///
+/// `WidgetId` is used to associate keybindings, focus state, and pointer areas
+/// with specific widgets. It wraps a static string slice for efficient comparison
+/// and hashing.
+///
+/// # Example
+/// ```ignore
+/// const MY_WIDGET: WidgetId = WidgetId("my_widget");
+/// ```
 #[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct WidgetId(pub &'static str);
 

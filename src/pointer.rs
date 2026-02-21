@@ -7,11 +7,19 @@ pub use crossterm::event::MouseEventKind;
 
 pub type PointerFn = Arc<dyn Fn(&mut World, Area, u16, u16) + Send + Sync>;
 
+/// A rectangular area defined by position and dimensions.
+///
+/// Used to define clickable regions for widgets in the pointer/mouse handling system.
+/// Coordinates are in terminal cell units.
 #[derive(Debug, Clone, Copy)]
 pub struct Area {
+    /// The x-coordinate (column) of the top-left corner.
     pub x: u16,
+    /// The y-coordinate (row) of the top-left corner.
     pub y: u16,
+    /// The width of the area in cells.
     pub width: u16,
+    /// The height of the area in cells.
     pub height: u16,
 }
 
@@ -52,6 +60,21 @@ struct Handlers {
     up: Option<PointerFn>,
 }
 
+/// Manages mouse/pointer interactions for widgets.
+///
+/// `Pointer` tracks clickable areas for widgets and dispatches mouse events
+/// (down, drag, up) to the appropriate handlers. It maintains a z-order for
+/// hit testing, where later-registered widgets appear on top.
+///
+/// # Example
+///
+/// ```ignore
+/// let mut pointer = Pointer::new();
+/// pointer.set(WidgetId("button"), Area::new(10, 5, 20, 3));
+/// pointer.on_click(WidgetId("button"), |world, area, x, y| {
+///     // Handle click at (x, y) within the button area
+/// });
+/// ```
 pub struct Pointer {
     order: Vec<WidgetId>,
     areas: HashMap<WidgetId, Area>,
