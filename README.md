@@ -18,8 +18,15 @@
 
 - **World** - A container that holds application state
 - **Keybindings** - Key binding registry with built-in help display
-- **Focus** - Tracks which widget is active
+- **Focus** - Tracks which widget currently has keyboard focus
 - **Pointer** - Tracks widget areas and handles mouse click/drag/up events
+- **InputEvent** - Unified input event handling for keyboard and mouse
+
+//! - [`World`] - A type-safe container that holds application state and resources
+//! - [`Keybindings`] - Key binding registry with built-in help display
+//! - [`Focus`] - Tracks which widget currently has keyboard focus
+//! - [`Pointer`] - Tracks widget areas and handles mouse click/drag/up events
+//! - [`InputEvent`] - Unified input event handling for keyboard and mouse
 
 ## Example
 
