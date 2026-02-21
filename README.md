@@ -1,4 +1,4 @@
-# tui-world
+<h1 align="center">tui-world</h1>
 
 [![Crates.io](https://img.shields.io/crates/v/tui-world?logo=rust&style=flat-square&logoColor=E05D44&color=E05D44)](https://crates.io/crates/tui-world)
 [![Downloads](https://img.shields.io/crates/d/tui-world?style=flat-square)](https://crates.io/crates/tui-world)
@@ -7,7 +7,12 @@
 [![Dependencies](https://deps.rs/repo/github/preiter93/tui-world/status.svg?style=flat-square)](https://deps.rs/repo/github/preiter93/tui-world)
 [![License](https://img.shields.io/crates/l/tui-world?style=flat-square&color=09bd66)](./LICENSE)
 
-A state and event management library for TUIs built with [ratatui](https://github.com/ratatui/ratatui).
+<p align="center">
+  <em>
+    A state and event management library for TUIs built with
+    <a href="https://github.com/ratatui/ratatui">ratatui</a>.
+  </em>
+</p>
 
 ## Core Concepts
 
