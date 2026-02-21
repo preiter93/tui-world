@@ -182,6 +182,19 @@ impl Keybindings {
 
     /// Returns keybindings grouped by name for the given widget IDs.
     /// Keys with the same name and widget ID are grouped together.
+    ///
+    /// Useful for rendering a help dialog showing only relevant keybindings.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let active = vec![GLOBAL_ID, CONTENT_ID];
+    /// let display = world.get::<Keybindings>().display_for(&active);
+    ///
+    /// for info in &display {
+    ///     println!("{:>10}  {}", info.keys_display_compact(), info.name);
+    /// }
+    /// ```
     #[must_use]
     pub fn display_for(&self, ids: &[WidgetId]) -> Vec<DisplayInfo> {
         use std::collections::HashMap;
@@ -211,6 +224,18 @@ impl Keybindings {
 
     /// Returns all keybindings grouped by name.
     /// Keys with the same name and widget ID are grouped together.
+    ///
+    /// Useful for rendering a complete help dialog with all available keybindings.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let display = world.get::<Keybindings>().display_all();
+    ///
+    /// for info in &display {
+    ///     println!("[{}] {:>10}  {}", info.id.0, info.keys_display_compact(), info.name);
+    /// }
+    /// ```
     #[must_use]
     pub fn display_all(&self) -> Vec<DisplayInfo> {
         use std::collections::HashMap;
