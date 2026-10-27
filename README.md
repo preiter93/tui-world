@@ -1,11 +1,15 @@
 <h1 align="center">tui-world</h1>
 
+<div align="center">
+
 [![Crates.io](https://img.shields.io/crates/v/tui-world?logo=rust&style=flat-square&logoColor=E05D44&color=E05D44)](https://crates.io/crates/tui-world)
 [![Downloads](https://img.shields.io/crates/d/tui-world?style=flat-square)](https://crates.io/crates/tui-world)
 [![Documentation](https://img.shields.io/docsrs/tui-world?style=flat-square&logo=docs.rs)](https://docs.rs/tui-world)
 [![CI](https://github.com/preiter93/tui-world/actions/workflows/ci.yml/badge.svg)](https://github.com/preiter93/tui-world/actions/workflows/ci.yml)
 [![Dependencies](https://deps.rs/repo/github/preiter93/tui-world/status.svg?style=flat-square)](https://deps.rs/repo/github/preiter93/tui-world)
-[![License](https://img.shields.io/crates/l/tui-world?style=flat-square&color=09bd66)](./LICENSE)
+[![License](https://img.shields.io/crates/l/tui-world?style=flat-square&color=09bd66)](./LICENSE.md)
+
+</div>
 
 <p align="center">
   <em>
@@ -21,12 +25,6 @@
 - **Focus** - Tracks which widget currently has keyboard focus
 - **Pointer** - Tracks widget areas and handles mouse click, drag, up, scroll and move events
 - **InputEvent** - Unified input event handling for keyboard and mouse
-
-//! - [`World`] - A type-safe container that holds application state and resources
-//! - [`Keybindings`] - Key binding registry with built-in help display
-//! - [`Focus`] - Tracks which widget currently has keyboard focus
-//! - [`Pointer`] - Tracks widget areas and handles mouse click, drag, up, scroll and move events
-//! - [`InputEvent`] - Unified input event handling for keyboard and mouse
 
 ## Example
 
@@ -69,7 +67,7 @@ world.get_mut::<Pointer>().set(WIDGET_ID, area);
 InputEvent::Mouse(mouse).handle(&mut world, &[WIDGET_ID]);
 ```
 
-See `examples/todo` and `examples/help.rs` for complete examples.
+See `examples/todo.rs`, `examples/help.rs` and `examples/selectable_text.rs` for complete examples.
 
 ## License
 
