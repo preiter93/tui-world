@@ -3,6 +3,7 @@ use crate::World;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crossterm::event::MouseEvent;
 pub use crossterm::event::MouseEventKind;
 
 pub type PointerFn = Arc<dyn Fn(&mut World, Area, u16, u16) + Send + Sync>;
@@ -208,6 +209,124 @@ impl Pointer {
             MouseEventKind::Drag(_) => handlers.drag.clone(),
             MouseEventKind::Up(_) => handlers.up.clone(),
             _ => None,
+        }
+    }
+
+    /// Dispatches a mouse event to the handler of the widget it belongs to.
+    pub fn handle(world: &mut World, mouse: MouseEvent) {
+        let x = mouse.column;
+        let y = mouse.row;
+        let pointer = world.get_mut::<Self>();
+
+        // Drag and up events go to the widget that received mouse down.
+        let target = match mouse.kind {
+            MouseEventKind::Down(_) => {
+                let hit = pointer.hit_test(x, y);
+                pointer.set_active(hit);
+                hit
+            }
+            MouseEventKind::Drag(_) | MouseEventKind::Up(_) => pointer.active(),
+            _ => None,
+        };
+
+        if let Some(widget_id) = target {
+            let pointer = world.get::<Self>();
+            let area = pointer.get(widget_id).copied();
+            let handler = pointer.get_handler_for(widget_id, mouse.kind);
+            if let (Some(area), Some(f)) = (area, handler) {
+                f(world, area, x, y);
+            }
+        }
+
+        if let MouseEventKind::Up(_) = mouse.kind {
+            world.get_mut::<Self>().set_active(None);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crossterm::event::{KeyModifiers, MouseButton};
+
+    struct Calls(Vec<String>);
+
+    struct TestCase {
+        name: &'static str,
+        given_areas: Vec<(WidgetId, Area)>,
+        given_events: Vec<MouseEvent>,
+        expected_calls: Vec<&'static str>,
+    }
+
+    fn mouse(kind: MouseEventKind, x: u16, y: u16) -> MouseEvent {
+        MouseEvent {
+            kind,
+            column: x,
+            row: y,
+            modifiers: KeyModifiers::NONE,
+        }
+    }
+
+    #[test]
+    fn handle_mouse() {
+        let down = MouseEventKind::Down(MouseButton::Left);
+        let drag = MouseEventKind::Drag(MouseButton::Left);
+        let up = MouseEventKind::Up(MouseButton::Left);
+
+        let test_cases = [
+            TestCase {
+                name: "success: down on topmost area",
+                given_areas: vec![
+                    (WidgetId("below"), Area::new(0, 0, 10, 10)),
+                    (WidgetId("above"), Area::new(0, 0, 5, 5)),
+                ],
+                given_events: vec![mouse(down, 1, 1)],
+                expected_calls: vec!["above:down"],
+            },
+            TestCase {
+                name: "success: drag and up go to pressed widget",
+                given_areas: vec![
+                    (WidgetId("left"), Area::new(0, 0, 5, 5)),
+                    (WidgetId("right"), Area::new(5, 0, 5, 5)),
+                ],
+                given_events: vec![mouse(down, 1, 1), mouse(drag, 6, 1), mouse(up, 6, 1)],
+                expected_calls: vec!["left:down", "left:drag", "left:up"],
+            },
+            TestCase {
+                name: "failure: down outside any area",
+                given_areas: vec![(WidgetId("left"), Area::new(0, 0, 5, 5))],
+                given_events: vec![mouse(down, 20, 20), mouse(drag, 1, 1), mouse(up, 1, 1)],
+                expected_calls: vec![],
+            },
+        ];
+
+        for test_case in test_cases {
+            let mut world = World::default();
+            world.insert(Calls(Vec::new()));
+            for (id, area) in test_case.given_areas {
+                let pointer = world.get_mut::<Pointer>();
+                pointer.set(id, area);
+                pointer.on_down(id, move |world, _, _, _| {
+                    world.get_mut::<Calls>().0.push(format!("{}:down", id.0));
+                });
+                pointer.on_drag(id, move |world, _, _, _| {
+                    world.get_mut::<Calls>().0.push(format!("{}:drag", id.0));
+                });
+                pointer.on_up(id, move |world, _, _, _| {
+                    world.get_mut::<Calls>().0.push(format!("{}:up", id.0));
+                });
+            }
+
+            for event in test_case.given_events {
+                Pointer::handle(&mut world, event);
+            }
+
+            assert_eq!(
+                world.get::<Calls>().0,
+                test_case.expected_calls,
+                "{}",
+                test_case.name
+            );
         }
     }
 }
