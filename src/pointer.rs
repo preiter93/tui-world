@@ -82,8 +82,8 @@ struct Handlers {
 /// Manages mouse/pointer interactions for widgets.
 ///
 /// `Pointer` tracks clickable areas for widgets and dispatches mouse events
-/// (down, drag, up, scroll, move) to the appropriate handlers. It maintains a z-order for
-/// hit testing, where later-registered widgets appear on top.
+/// (down, drag, up, scroll, move) to the appropriate handlers. For hit testing,
+/// the widget whose area was set last is on top.
 ///
 /// # Example
 ///
@@ -119,12 +119,18 @@ impl Pointer {
         }
     }
 
-    /// Sets the clickable area for a widget.
+    /// Sets the clickable area for a widget and puts it on top of the others.
     pub fn set<W: Into<Area>>(&mut self, id: WidgetId, area: W) {
-        if !self.areas.contains_key(&id) {
-            self.order.push(id);
-        }
+        self.order.retain(|&other| other != id);
+        self.order.push(id);
         self.areas.insert(id, area.into());
+    }
+
+    /// Removes all areas but keeps the handlers.
+    /// Call it before rendering, so only the widgets drawn in this frame can be hit.
+    pub fn clear_areas(&mut self) {
+        self.areas.clear();
+        self.order.clear();
     }
 
     /// Returns the area for a widget if it exists.
@@ -308,6 +314,7 @@ mod tests {
         name: &'static str,
         given_areas: Vec<(WidgetId, Area)>,
         given_ids: Vec<WidgetId>,
+        given_clear_areas: bool,
         given_events: Vec<MouseEvent>,
         expected_calls: Vec<&'static str>,
     }
@@ -335,6 +342,7 @@ mod tests {
                     (WidgetId("above"), Area::new(0, 0, 5, 5)),
                 ],
                 given_ids: vec![WidgetId("below"), WidgetId("above")],
+                given_clear_areas: false,
                 given_events: vec![mouse(down, 1, 1)],
                 expected_calls: vec!["above:Down(Left)"],
             },
@@ -345,6 +353,7 @@ mod tests {
                     (WidgetId("right"), Area::new(5, 0, 5, 5)),
                 ],
                 given_ids: vec![WidgetId("left"), WidgetId("right")],
+                given_clear_areas: false,
                 given_events: vec![mouse(down, 1, 1), mouse(drag, 6, 1), mouse(up, 6, 1)],
                 expected_calls: vec!["left:Down(Left)", "left:Drag(Left)", "left:Up(Left)"],
             },
@@ -352,6 +361,7 @@ mod tests {
                 name: "success: right click reaches handler with button",
                 given_areas: vec![(WidgetId("left"), Area::new(0, 0, 5, 5))],
                 given_ids: vec![WidgetId("left")],
+                given_clear_areas: false,
                 given_events: vec![mouse(MouseEventKind::Down(MouseButton::Right), 1, 1)],
                 expected_calls: vec!["left:Down(Right)"],
             },
@@ -362,6 +372,7 @@ mod tests {
                     (WidgetId("right"), Area::new(5, 0, 5, 5)),
                 ],
                 given_ids: vec![WidgetId("left"), WidgetId("right")],
+                given_clear_areas: false,
                 given_events: vec![
                     mouse(MouseEventKind::ScrollDown, 6, 1),
                     mouse(MouseEventKind::Moved, 1, 1),
@@ -372,6 +383,7 @@ mod tests {
                 name: "failure: scroll outside any area",
                 given_areas: vec![(WidgetId("left"), Area::new(0, 0, 5, 5))],
                 given_ids: vec![WidgetId("left")],
+                given_clear_areas: false,
                 given_events: vec![mouse(MouseEventKind::ScrollUp, 20, 20)],
                 expected_calls: vec![],
             },
@@ -379,6 +391,7 @@ mod tests {
                 name: "failure: down on inactive widget",
                 given_areas: vec![(WidgetId("left"), Area::new(0, 0, 5, 5))],
                 given_ids: vec![],
+                given_clear_areas: false,
                 given_events: vec![mouse(down, 1, 1), mouse(drag, 2, 1), mouse(up, 2, 1)],
                 expected_calls: vec![],
             },
@@ -389,6 +402,27 @@ mod tests {
                     (WidgetId("above"), Area::new(0, 0, 5, 5)),
                 ],
                 given_ids: vec![WidgetId("below")],
+                given_clear_areas: false,
+                given_events: vec![mouse(down, 1, 1)],
+                expected_calls: vec![],
+            },
+            TestCase {
+                name: "success: last set wins on overlap",
+                given_areas: vec![
+                    (WidgetId("below"), Area::new(0, 0, 10, 10)),
+                    (WidgetId("above"), Area::new(0, 0, 5, 5)),
+                    (WidgetId("below"), Area::new(0, 0, 10, 10)),
+                ],
+                given_ids: vec![WidgetId("below"), WidgetId("above")],
+                given_clear_areas: false,
+                given_events: vec![mouse(down, 1, 1)],
+                expected_calls: vec!["below:Down(Left)"],
+            },
+            TestCase {
+                name: "failure: cleared area is not hit",
+                given_areas: vec![(WidgetId("left"), Area::new(0, 0, 5, 5))],
+                given_ids: vec![WidgetId("left")],
+                given_clear_areas: true,
                 given_events: vec![mouse(down, 1, 1)],
                 expected_calls: vec![],
             },
@@ -396,6 +430,7 @@ mod tests {
                 name: "failure: down outside any area",
                 given_areas: vec![(WidgetId("left"), Area::new(0, 0, 5, 5))],
                 given_ids: vec![WidgetId("left")],
+                given_clear_areas: false,
                 given_events: vec![mouse(down, 20, 20), mouse(drag, 1, 1), mouse(up, 1, 1)],
                 expected_calls: vec![],
             },
@@ -417,6 +452,10 @@ mod tests {
                 pointer.on_up(id, record);
                 pointer.on_scroll(id, record);
                 pointer.on_move(id, record);
+            }
+
+            if test_case.given_clear_areas {
+                world.get_mut::<Pointer>().clear_areas();
             }
 
             for event in test_case.given_events {

@@ -61,7 +61,8 @@ world.get_mut::<Pointer>().on_click(WIDGET_ID, |world, event| {
     world.get_mut::<MyAppState>().select(clicked_index);
 });
 
-// Register widget area in render function
+// In the render function, drop last frame's areas and register the drawn ones
+world.get_mut::<Pointer>().clear_areas();
 world.get_mut::<Pointer>().set(WIDGET_ID, area);
 
 // Handle mouse events

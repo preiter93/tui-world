@@ -234,6 +234,7 @@ fn setup_pointer(world: &mut World) {
 
 fn render(frame: &mut Frame, world: &mut World) {
     let area = frame.area();
+    world.get_mut::<Pointer>().clear_areas();
 
     render_todo(frame, world, area);
 
