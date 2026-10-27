@@ -7,7 +7,7 @@
 //! - [`World`] - A container that holds application state
 //! - [`Keybindings`] - Key binding registry with built-in help display
 //! - [`Focus`] - Tracks which widget currently has keyboard focus
-//! - [`Pointer`] - Tracks widget areas and handles mouse click, drag, up, scroll and move events
+//! - [`Pointer`] - Tracks widget areas and handles mouse click, drag, up, scroll, move and leave events
 //! - [`InputEvent`] - Unified input event handling for keyboard and mouse
 //!
 //! ## Example

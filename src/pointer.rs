@@ -77,12 +77,13 @@ struct Handlers {
     up: Option<PointerFn>,
     scroll: Option<PointerFn>,
     moved: Option<PointerFn>,
+    leave: Option<PointerFn>,
 }
 
 /// Manages mouse/pointer interactions for widgets.
 ///
 /// `Pointer` tracks clickable areas for widgets and dispatches mouse events
-/// (down, drag, up, scroll, move) to the appropriate handlers. For hit testing,
+/// (down, drag, up, scroll, move, leave) to the appropriate handlers. For hit testing,
 /// the widget whose area was set last is on top.
 ///
 /// # Example
@@ -100,6 +101,8 @@ pub struct Pointer {
     handlers: HashMap<WidgetId, Handlers>,
     /// Tracks which widget received the last mouse down event
     active: Option<WidgetId>,
+    /// Tracks which widget the pointer was last moved over, with its area at that time
+    hovered: Option<(WidgetId, Area)>,
 }
 
 impl Default for Pointer {
@@ -116,6 +119,7 @@ impl Pointer {
             areas: HashMap::new(),
             handlers: HashMap::new(),
             active: None,
+            hovered: None,
         }
     }
 
@@ -189,6 +193,15 @@ impl Pointer {
         self.handlers.entry(id).or_default().moved = Some(Arc::new(handler));
     }
 
+    /// Registers a handler for when the pointer moves off a widget.
+    /// `event.area` is the area the widget had when the pointer was over it.
+    pub fn on_leave<F>(&mut self, id: WidgetId, handler: F)
+    where
+        F: Fn(&mut World, &PointerEvent) + Send + Sync + 'static,
+    {
+        self.handlers.entry(id).or_default().leave = Some(Arc::new(handler));
+    }
+
     /// Returns the click/down handler for a widget if it exists.
     #[must_use]
     pub fn get_handler(&self, id: WidgetId) -> Option<PointerFn> {
@@ -202,6 +215,9 @@ impl Pointer {
         self.order.retain(|&i| i != id);
         if self.active == Some(id) {
             self.active = None;
+        }
+        if self.hovered.is_some_and(|(hovered_id, _)| hovered_id == id) {
+            self.hovered = None;
         }
     }
 
@@ -281,19 +297,35 @@ impl Pointer {
             | MouseEventKind::ScrollRight => hit,
         };
 
+        let pointer_event = |area| PointerEvent {
+            area,
+            x,
+            y,
+            kind: mouse.kind,
+            modifiers: mouse.modifiers,
+        };
+
+        // The widget the pointer moved off gets a leave event first.
+        if mouse.kind == MouseEventKind::Moved {
+            let pointer = world.get_mut::<Self>();
+            let left = pointer.hovered.filter(|(id, _)| Some(*id) != hit);
+            let hovered = hit.and_then(|id| pointer.get(id).map(|area| (id, *area)));
+            pointer.hovered = hovered;
+
+            if let Some((id, area)) = left {
+                let leave = pointer.handlers.get(&id).and_then(|h| h.leave.clone());
+                if let Some(f) = leave {
+                    f(world, &pointer_event(area));
+                }
+            }
+        }
+
         if let Some(widget_id) = target {
             let pointer = world.get::<Self>();
             let area = pointer.get(widget_id).copied();
             let handler = pointer.get_handler_for(widget_id, mouse.kind);
             if let (Some(area), Some(f)) = (area, handler) {
-                let event = PointerEvent {
-                    area,
-                    x,
-                    y,
-                    kind: mouse.kind,
-                    modifiers: mouse.modifiers,
-                };
-                f(world, &event);
+                f(world, &pointer_event(area));
             }
         }
 
@@ -380,6 +412,42 @@ mod tests {
                 expected_calls: vec!["right:ScrollDown", "left:Moved"],
             },
             TestCase {
+                name: "success: move to another widget leaves the old one",
+                given_areas: vec![
+                    (WidgetId("left"), Area::new(0, 0, 5, 5)),
+                    (WidgetId("right"), Area::new(5, 0, 5, 5)),
+                ],
+                given_ids: vec![WidgetId("left"), WidgetId("right")],
+                given_clear_areas: false,
+                given_events: vec![
+                    mouse(MouseEventKind::Moved, 1, 1),
+                    mouse(MouseEventKind::Moved, 6, 1),
+                ],
+                expected_calls: vec!["left:Moved", "left:Leave", "right:Moved"],
+            },
+            TestCase {
+                name: "success: move outside any area leaves the widget",
+                given_areas: vec![(WidgetId("left"), Area::new(0, 0, 5, 5))],
+                given_ids: vec![WidgetId("left")],
+                given_clear_areas: false,
+                given_events: vec![
+                    mouse(MouseEventKind::Moved, 1, 1),
+                    mouse(MouseEventKind::Moved, 20, 20),
+                ],
+                expected_calls: vec!["left:Moved", "left:Leave"],
+            },
+            TestCase {
+                name: "failure: move within the same widget does not leave",
+                given_areas: vec![(WidgetId("left"), Area::new(0, 0, 5, 5))],
+                given_ids: vec![WidgetId("left")],
+                given_clear_areas: false,
+                given_events: vec![
+                    mouse(MouseEventKind::Moved, 1, 1),
+                    mouse(MouseEventKind::Moved, 2, 1),
+                ],
+                expected_calls: vec!["left:Moved", "left:Moved"],
+            },
+            TestCase {
                 name: "failure: scroll outside any area",
                 given_areas: vec![(WidgetId("left"), Area::new(0, 0, 5, 5))],
                 given_ids: vec![WidgetId("left")],
@@ -452,6 +520,9 @@ mod tests {
                 pointer.on_up(id, record);
                 pointer.on_scroll(id, record);
                 pointer.on_move(id, record);
+                pointer.on_leave(id, move |world, _| {
+                    world.get_mut::<Calls>().0.push(format!("{}:Leave", id.0));
+                });
             }
 
             if test_case.given_clear_areas {
