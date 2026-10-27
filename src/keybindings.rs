@@ -85,7 +85,8 @@ impl Keybindings {
         action: impl Fn(&mut World) + Send + Sync + 'static,
     ) {
         let key = key.into();
-        self.bindings.retain(|b| !(b.key == key && b.id == id));
+        self.bindings
+            .retain(|b| !(b.key.matches(&key) && b.id == id));
         self.bindings.push(Binding {
             id,
             key,
@@ -155,7 +156,7 @@ impl Keybindings {
     /// Returns `true` if a matching binding was found and executed.
     pub fn handle(&self, key: &KeyBinding, world: &mut World, ids: &[WidgetId]) -> bool {
         for binding in &self.bindings {
-            if binding.key != *key {
+            if !binding.key.matches(key) {
                 continue;
             }
 
@@ -269,6 +270,9 @@ impl Keybindings {
 /// - A `char` (uppercase letters automatically include Shift modifier)
 /// - A [`KeyEvent`] reference
 ///
+/// Shift is ignored when matching characters, so `'#'` also fires when a
+/// terminal reports `#` with Shift held.
+///
 /// # Example
 /// ```ignore
 /// // Simple character key
@@ -311,6 +315,18 @@ impl KeyBinding {
     #[must_use]
     pub fn shift(c: char) -> Self {
         Self::new(KeyCode::Char(c), KeyModifiers::SHIFT)
+    }
+
+    /// Returns true if the pressed key triggers this binding, ignoring Shift for characters.
+    fn matches(&self, pressed: &KeyBinding) -> bool {
+        let ignored_modifiers = match self.code {
+            KeyCode::Char(_) => KeyModifiers::SHIFT,
+            _ => KeyModifiers::NONE,
+        };
+
+        self.code == pressed.code
+            && self.modifiers.difference(ignored_modifiers)
+                == pressed.modifiers.difference(ignored_modifiers)
     }
 
     /// Returns a compact display string using symbols for modifiers.
@@ -512,5 +528,70 @@ impl DisplayInfo {
             .map(formatter)
             .collect::<Vec<_>>()
             .join(", ")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestCase {
+        name: &'static str,
+        given_binding: KeyBinding,
+        given_pressed: KeyBinding,
+        expected_fired: bool,
+    }
+
+    #[test]
+    fn handle_key() {
+        let test_cases = [
+            TestCase {
+                name: "success: '#' matches Shift+#",
+                given_binding: '#'.into(),
+                given_pressed: KeyBinding::shift('#'),
+                expected_fired: true,
+            },
+            TestCase {
+                name: "success: 'H' matches H with Shift",
+                given_binding: 'H'.into(),
+                given_pressed: KeyBinding::shift('H'),
+                expected_fired: true,
+            },
+            TestCase {
+                name: "success: 'H' matches H without Shift",
+                given_binding: 'H'.into(),
+                given_pressed: KeyBinding::key(KeyCode::Char('H')),
+                expected_fired: true,
+            },
+            TestCase {
+                name: "failure: 'h' does not match H",
+                given_binding: 'h'.into(),
+                given_pressed: KeyBinding::shift('H'),
+                expected_fired: false,
+            },
+            TestCase {
+                name: "failure: 'h' does not match Ctrl+h",
+                given_binding: 'h'.into(),
+                given_pressed: KeyBinding::ctrl('h'),
+                expected_fired: false,
+            },
+            TestCase {
+                name: "failure: Tab does not match Shift+Tab",
+                given_binding: KeyCode::Tab.into(),
+                given_pressed: KeyBinding::new(KeyCode::Tab, KeyModifiers::SHIFT),
+                expected_fired: false,
+            },
+        ];
+
+        for test_case in test_cases {
+            let id = WidgetId("widget");
+            let mut world = World::new();
+            let mut keybindings = Keybindings::new();
+            keybindings.bind(id, test_case.given_binding, "Test", |_| {});
+
+            let fired = keybindings.handle(&test_case.given_pressed, &mut world, &[id]);
+
+            assert_eq!(fired, test_case.expected_fired, "{}", test_case.name);
+        }
     }
 }
