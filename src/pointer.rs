@@ -75,12 +75,14 @@ struct Handlers {
     down: Option<PointerFn>,
     drag: Option<PointerFn>,
     up: Option<PointerFn>,
+    scroll: Option<PointerFn>,
+    moved: Option<PointerFn>,
 }
 
 /// Manages mouse/pointer interactions for widgets.
 ///
 /// `Pointer` tracks clickable areas for widgets and dispatches mouse events
-/// (down, drag, up) to the appropriate handlers. It maintains a z-order for
+/// (down, drag, up, scroll, move) to the appropriate handlers. It maintains a z-order for
 /// hit testing, where later-registered widgets appear on top.
 ///
 /// # Example
@@ -164,6 +166,23 @@ impl Pointer {
         self.handlers.entry(id).or_default().up = Some(Arc::new(handler));
     }
 
+    /// Registers a scroll handler for the widget under the pointer.
+    /// Read `event.kind` to tell the scroll direction.
+    pub fn on_scroll<F>(&mut self, id: WidgetId, handler: F)
+    where
+        F: Fn(&mut World, &PointerEvent) + Send + Sync + 'static,
+    {
+        self.handlers.entry(id).or_default().scroll = Some(Arc::new(handler));
+    }
+
+    /// Registers a handler for pointer movement over a widget while no button is held.
+    pub fn on_move<F>(&mut self, id: WidgetId, handler: F)
+    where
+        F: Fn(&mut World, &PointerEvent) + Send + Sync + 'static,
+    {
+        self.handlers.entry(id).or_default().moved = Some(Arc::new(handler));
+    }
+
     /// Returns the click/down handler for a widget if it exists.
     #[must_use]
     pub fn get_handler(&self, id: WidgetId) -> Option<PointerFn> {
@@ -224,7 +243,11 @@ impl Pointer {
             MouseEventKind::Down(_) => handlers.down.clone(),
             MouseEventKind::Drag(_) => handlers.drag.clone(),
             MouseEventKind::Up(_) => handlers.up.clone(),
-            _ => None,
+            MouseEventKind::Moved => handlers.moved.clone(),
+            MouseEventKind::ScrollDown
+            | MouseEventKind::ScrollUp
+            | MouseEventKind::ScrollLeft
+            | MouseEventKind::ScrollRight => handlers.scroll.clone(),
         }
     }
 
@@ -242,7 +265,11 @@ impl Pointer {
                 hit
             }
             MouseEventKind::Drag(_) | MouseEventKind::Up(_) => pointer.active(),
-            _ => None,
+            MouseEventKind::Moved
+            | MouseEventKind::ScrollDown
+            | MouseEventKind::ScrollUp
+            | MouseEventKind::ScrollLeft
+            | MouseEventKind::ScrollRight => pointer.hit_test(x, y),
         };
 
         if let Some(widget_id) = target {
@@ -322,6 +349,24 @@ mod tests {
                 expected_calls: vec!["left:Down(Right)"],
             },
             TestCase {
+                name: "success: scroll and move go to widget under pointer",
+                given_areas: vec![
+                    (WidgetId("left"), Area::new(0, 0, 5, 5)),
+                    (WidgetId("right"), Area::new(5, 0, 5, 5)),
+                ],
+                given_events: vec![
+                    mouse(MouseEventKind::ScrollDown, 6, 1),
+                    mouse(MouseEventKind::Moved, 1, 1),
+                ],
+                expected_calls: vec!["right:ScrollDown", "left:Moved"],
+            },
+            TestCase {
+                name: "failure: scroll outside any area",
+                given_areas: vec![(WidgetId("left"), Area::new(0, 0, 5, 5))],
+                given_events: vec![mouse(MouseEventKind::ScrollUp, 20, 20)],
+                expected_calls: vec![],
+            },
+            TestCase {
                 name: "failure: down outside any area",
                 given_areas: vec![(WidgetId("left"), Area::new(0, 0, 5, 5))],
                 given_events: vec![mouse(down, 20, 20), mouse(drag, 1, 1), mouse(up, 1, 1)],
@@ -343,6 +388,8 @@ mod tests {
                 pointer.on_down(id, record);
                 pointer.on_drag(id, record);
                 pointer.on_up(id, record);
+                pointer.on_scroll(id, record);
+                pointer.on_move(id, record);
             }
 
             for event in test_case.given_events {
