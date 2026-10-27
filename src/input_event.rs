@@ -30,6 +30,7 @@ pub enum InputEvent {
 
 impl InputEvent {
     /// Handles the event by dispatching to the appropriate handler.
+    /// Only the widgets in `ids` receive key and mouse events.
     ///
     /// # Panics
     ///
@@ -42,7 +43,7 @@ impl InputEvent {
                 keybindings.handle(&binding, world, ids);
                 world.insert(keybindings);
             }
-            InputEvent::Mouse(mouse) => Pointer::handle(world, mouse),
+            InputEvent::Mouse(mouse) => Pointer::handle(world, mouse, ids),
             InputEvent::Tick => {}
         }
     }
