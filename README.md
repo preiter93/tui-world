@@ -56,8 +56,8 @@ InputEvent::Key(key).handle(&mut world, &[WIDGET_ID]);
 
 ```rust
 // Register click handlers
-world.get_mut::<Pointer>().on_click(WIDGET_ID, |world, area, x, y| {
-    let clicked_index = y.saturating_sub(area.y) as usize;
+world.get_mut::<Pointer>().on_click(WIDGET_ID, |world, event| {
+    let clicked_index = event.y.saturating_sub(event.area.y) as usize;
     world.get_mut::<MyAppState>().select(clicked_index);
 });
 

@@ -3,10 +3,26 @@ use crate::World;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crossterm::event::MouseEvent;
 pub use crossterm::event::MouseEventKind;
+use crossterm::event::{KeyModifiers, MouseEvent};
 
-pub type PointerFn = Arc<dyn Fn(&mut World, Area, u16, u16) + Send + Sync>;
+pub type PointerFn = Arc<dyn Fn(&mut World, &PointerEvent) + Send + Sync>;
+
+/// A mouse event passed to pointer handlers.
+#[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
+pub struct PointerEvent {
+    /// The area of the widget that handles the event.
+    pub area: Area,
+    /// The column of the pointer.
+    pub x: u16,
+    /// The row of the pointer.
+    pub y: u16,
+    /// The kind of event, e.g. `Down(MouseButton::Left)`.
+    pub kind: MouseEventKind,
+    /// The modifiers held during the event.
+    pub modifiers: KeyModifiers,
+}
 
 /// A rectangular area defined by position and dimensions.
 ///
@@ -72,8 +88,8 @@ struct Handlers {
 /// ```ignore
 /// let mut pointer = Pointer::new();
 /// pointer.set(WidgetId("button"), Area::new(10, 5, 20, 3));
-/// pointer.on_click(WidgetId("button"), |world, area, x, y| {
-///     // Handle click at (x, y) within the button area
+/// pointer.on_click(WidgetId("button"), |world, event| {
+///     // Handle click at (event.x, event.y) within event.area
 /// });
 /// ```
 pub struct Pointer {
@@ -118,7 +134,7 @@ impl Pointer {
     /// Registers a click (mouse down) handler for a widget.
     pub fn on_click<F>(&mut self, id: WidgetId, handler: F)
     where
-        F: Fn(&mut World, Area, u16, u16) + Send + Sync + 'static,
+        F: Fn(&mut World, &PointerEvent) + Send + Sync + 'static,
     {
         self.handlers.entry(id).or_default().down = Some(Arc::new(handler));
     }
@@ -126,7 +142,7 @@ impl Pointer {
     /// Registers a mouse down handler for a widget.
     pub fn on_down<F>(&mut self, id: WidgetId, handler: F)
     where
-        F: Fn(&mut World, Area, u16, u16) + Send + Sync + 'static,
+        F: Fn(&mut World, &PointerEvent) + Send + Sync + 'static,
     {
         self.on_click(id, handler);
     }
@@ -135,7 +151,7 @@ impl Pointer {
     /// This is called when mouse moves while button is held down.
     pub fn on_drag<F>(&mut self, id: WidgetId, handler: F)
     where
-        F: Fn(&mut World, Area, u16, u16) + Send + Sync + 'static,
+        F: Fn(&mut World, &PointerEvent) + Send + Sync + 'static,
     {
         self.handlers.entry(id).or_default().drag = Some(Arc::new(handler));
     }
@@ -143,7 +159,7 @@ impl Pointer {
     /// Registers a mouse up handler for a widget.
     pub fn on_up<F>(&mut self, id: WidgetId, handler: F)
     where
-        F: Fn(&mut World, Area, u16, u16) + Send + Sync + 'static,
+        F: Fn(&mut World, &PointerEvent) + Send + Sync + 'static,
     {
         self.handlers.entry(id).or_default().up = Some(Arc::new(handler));
     }
@@ -234,7 +250,14 @@ impl Pointer {
             let area = pointer.get(widget_id).copied();
             let handler = pointer.get_handler_for(widget_id, mouse.kind);
             if let (Some(area), Some(f)) = (area, handler) {
-                f(world, area, x, y);
+                let event = PointerEvent {
+                    area,
+                    x,
+                    y,
+                    kind: mouse.kind,
+                    modifiers: mouse.modifiers,
+                };
+                f(world, &event);
             }
         }
 
@@ -247,7 +270,7 @@ impl Pointer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::{KeyModifiers, MouseButton};
+    use crossterm::event::MouseButton;
 
     struct Calls(Vec<String>);
 
@@ -281,7 +304,7 @@ mod tests {
                     (WidgetId("above"), Area::new(0, 0, 5, 5)),
                 ],
                 given_events: vec![mouse(down, 1, 1)],
-                expected_calls: vec!["above:down"],
+                expected_calls: vec!["above:Down(Left)"],
             },
             TestCase {
                 name: "success: drag and up go to pressed widget",
@@ -290,7 +313,13 @@ mod tests {
                     (WidgetId("right"), Area::new(5, 0, 5, 5)),
                 ],
                 given_events: vec![mouse(down, 1, 1), mouse(drag, 6, 1), mouse(up, 6, 1)],
-                expected_calls: vec!["left:down", "left:drag", "left:up"],
+                expected_calls: vec!["left:Down(Left)", "left:Drag(Left)", "left:Up(Left)"],
+            },
+            TestCase {
+                name: "success: right click reaches handler with button",
+                given_areas: vec![(WidgetId("left"), Area::new(0, 0, 5, 5))],
+                given_events: vec![mouse(MouseEventKind::Down(MouseButton::Right), 1, 1)],
+                expected_calls: vec!["left:Down(Right)"],
             },
             TestCase {
                 name: "failure: down outside any area",
@@ -304,17 +333,16 @@ mod tests {
             let mut world = World::default();
             world.insert(Calls(Vec::new()));
             for (id, area) in test_case.given_areas {
+                let record = move |world: &mut World, event: &PointerEvent| {
+                    let call = format!("{}:{:?}", id.0, event.kind);
+                    world.get_mut::<Calls>().0.push(call);
+                };
+
                 let pointer = world.get_mut::<Pointer>();
                 pointer.set(id, area);
-                pointer.on_down(id, move |world, _, _, _| {
-                    world.get_mut::<Calls>().0.push(format!("{}:down", id.0));
-                });
-                pointer.on_drag(id, move |world, _, _, _| {
-                    world.get_mut::<Calls>().0.push(format!("{}:drag", id.0));
-                });
-                pointer.on_up(id, move |world, _, _, _| {
-                    world.get_mut::<Calls>().0.push(format!("{}:up", id.0));
-                });
+                pointer.on_down(id, record);
+                pointer.on_drag(id, record);
+                pointer.on_up(id, record);
             }
 
             for event in test_case.given_events {

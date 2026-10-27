@@ -46,7 +46,7 @@ mod world;
 pub use focus::Focus;
 pub use input_event::InputEvent;
 pub use keybindings::{DisplayInfo, KeyBinding, Keybindings, Keys};
-pub use pointer::{Area, Pointer};
+pub use pointer::{Area, Pointer, PointerEvent};
 pub use world::World;
 
 /// A unique identifier for a widget in the application.
@@ -70,6 +70,7 @@ pub mod prelude {
     pub use crate::KeyBinding;
     pub use crate::Keybindings;
     pub use crate::Pointer;
+    pub use crate::PointerEvent;
     pub use crate::WidgetId;
     pub use crate::World;
 }

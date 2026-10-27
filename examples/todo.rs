@@ -215,9 +215,9 @@ fn setup_keybindings(world: &mut World) {
 fn setup_pointer(world: &mut World) {
     world
         .get_mut::<Pointer>()
-        .on_click(TODO_LIST_ID, |world, area, x, y| {
-            let row = (y - area.y) as usize;
-            let col = (x - area.x) as usize;
+        .on_click(TODO_LIST_ID, |world, event| {
+            let row = (event.y - event.area.y) as usize;
+            let col = (event.x - event.area.x) as usize;
             let state = world.get_mut::<TodoState>();
 
             if row >= state.todos.len() {
