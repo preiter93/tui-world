@@ -130,8 +130,8 @@ impl Keybindings {
     /// world.get_mut::<Keybindings>().bind_any(
     ///     WidgetId("input"),
     ///     |world, key| {
-    ///         if let KeyBinding { code: KeyCode::Char(c), .. } = key {
-    ///             world.get_mut::<InputState>().push(*c);
+    ///         if let Some(c) = key.text_char() {
+    ///             world.get_mut::<InputState>().push(c);
     ///         }
     ///     },
     /// );
@@ -327,6 +327,24 @@ impl KeyBinding {
         self.code == pressed.code
             && self.modifiers.difference(ignored_modifiers)
                 == pressed.modifiers.difference(ignored_modifiers)
+    }
+
+    /// Returns the typed character, or `None` for other keys and shortcuts like Ctrl+c or Alt+b.
+    #[must_use]
+    pub fn text_char(&self) -> Option<char> {
+        let KeyCode::Char(c) = self.code else {
+            return None;
+        };
+
+        // AltGr arrives as Ctrl+Alt on Windows, so that still counts as typed text.
+        let modifiers = self.modifiers.difference(KeyModifiers::SHIFT);
+        let is_typed =
+            modifiers.is_empty() || modifiers == KeyModifiers::CONTROL | KeyModifiers::ALT;
+        if !is_typed {
+            return None;
+        }
+
+        Some(c)
     }
 
     /// Returns a compact display string using symbols for modifiers.
@@ -592,6 +610,57 @@ mod tests {
             let fired = keybindings.handle(&test_case.given_pressed, &mut world, &[id]);
 
             assert_eq!(fired, test_case.expected_fired, "{}", test_case.name);
+        }
+    }
+
+    struct TextCharTestCase {
+        name: &'static str,
+        given_key: KeyBinding,
+        expected_char: Option<char>,
+    }
+
+    #[test]
+    fn text_char() {
+        let test_cases = [
+            TextCharTestCase {
+                name: "success: plain char",
+                given_key: 'a'.into(),
+                expected_char: Some('a'),
+            },
+            TextCharTestCase {
+                name: "success: shifted char",
+                given_key: 'A'.into(),
+                expected_char: Some('A'),
+            },
+            TextCharTestCase {
+                name: "success: AltGr char",
+                given_key: KeyBinding::new(
+                    KeyCode::Char('@'),
+                    KeyModifiers::CONTROL | KeyModifiers::ALT,
+                ),
+                expected_char: Some('@'),
+            },
+            TextCharTestCase {
+                name: "failure: Ctrl+c",
+                given_key: KeyBinding::ctrl('c'),
+                expected_char: None,
+            },
+            TextCharTestCase {
+                name: "failure: Alt+b",
+                given_key: KeyBinding::alt('b'),
+                expected_char: None,
+            },
+            TextCharTestCase {
+                name: "failure: not a char",
+                given_key: KeyCode::Enter.into(),
+                expected_char: None,
+            },
+        ];
+
+        for test_case in test_cases {
+            let typed = test_case.given_key.text_char();
+
+            assert_eq!(typed, test_case.expected_char, "{}", test_case.name);
         }
     }
 }

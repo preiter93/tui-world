@@ -206,7 +206,7 @@ fn setup_keybindings(world: &mut World) {
     );
 
     kb.bind_any(DIALOG_ID, |world, key| {
-        if let KeyCode::Char(c) = key.code {
+        if let Some(c) = key.text_char() {
             world.get_mut::<DialogState>().push(c);
         }
     });
