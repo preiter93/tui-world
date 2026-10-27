@@ -25,6 +25,7 @@ pub enum InputEvent {
     /// A mouse event (click, drag, scroll, etc.).
     Mouse(MouseEvent),
     /// A periodic tick event for animations or timed updates.
+    /// Send it on a timer to keep a held drag going, like scrolling at an edge.
     Tick,
 }
 
@@ -46,7 +47,11 @@ impl InputEvent {
                 world.insert(keybindings);
             }
             InputEvent::Mouse(mouse) => Pointer::handle(world, mouse, ids),
-            InputEvent::Tick => {}
+            InputEvent::Tick => {
+                if let Some(drag) = world.get::<Pointer>().last_drag() {
+                    Pointer::handle(world, drag, ids);
+                }
+            }
         }
     }
 }

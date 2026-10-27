@@ -103,6 +103,8 @@ pub struct Pointer {
     active: Option<WidgetId>,
     /// Tracks which widget the pointer was last moved over, with its area at that time
     hovered: Option<(WidgetId, Area)>,
+    /// The last drag event while a button is held, repeated on each tick
+    last_drag: Option<MouseEvent>,
 }
 
 impl Default for Pointer {
@@ -120,6 +122,7 @@ impl Pointer {
             handlers: HashMap::new(),
             active: None,
             hovered: None,
+            last_drag: None,
         }
     }
 
@@ -160,7 +163,8 @@ impl Pointer {
     }
 
     /// Registers a drag handler for a widget.
-    /// This is called when mouse moves while button is held down.
+    /// This is called when mouse moves while button is held down,
+    /// and again on each tick while the pointer is held still.
     pub fn on_drag<F>(&mut self, id: WidgetId, handler: F)
     where
         F: Fn(&mut World, &PointerEvent) + Send + Sync + 'static,
@@ -257,6 +261,12 @@ impl Pointer {
         self.active
     }
 
+    /// Returns the last drag event while a button is held.
+    #[must_use]
+    pub(crate) fn last_drag(&self) -> Option<MouseEvent> {
+        self.last_drag
+    }
+
     /// Gets the handler for a specific event kind and widget.
     #[must_use]
     pub fn get_handler_for(&self, id: WidgetId, kind: MouseEventKind) -> Option<PointerFn> {
@@ -287,9 +297,17 @@ impl Pointer {
         let target = match mouse.kind {
             MouseEventKind::Down(_) => {
                 pointer.set_active(hit);
+                pointer.last_drag = None;
                 hit
             }
-            MouseEventKind::Drag(_) | MouseEventKind::Up(_) => pointer.active(),
+            MouseEventKind::Drag(_) => {
+                pointer.last_drag = Some(mouse);
+                pointer.active()
+            }
+            MouseEventKind::Up(_) => {
+                pointer.last_drag = None;
+                pointer.active()
+            }
             MouseEventKind::Moved
             | MouseEventKind::ScrollDown
             | MouseEventKind::ScrollUp
@@ -338,6 +356,7 @@ impl Pointer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::InputEvent;
     use crossterm::event::MouseButton;
 
     struct Calls(Vec<String>);
@@ -347,17 +366,17 @@ mod tests {
         given_areas: Vec<(WidgetId, Area)>,
         given_ids: Vec<WidgetId>,
         given_clear_areas: bool,
-        given_events: Vec<MouseEvent>,
+        given_events: Vec<InputEvent>,
         expected_calls: Vec<&'static str>,
     }
 
-    fn mouse(kind: MouseEventKind, x: u16, y: u16) -> MouseEvent {
-        MouseEvent {
+    fn mouse(kind: MouseEventKind, x: u16, y: u16) -> InputEvent {
+        InputEvent::Mouse(MouseEvent {
             kind,
             column: x,
             row: y,
             modifiers: KeyModifiers::NONE,
-        }
+        })
     }
 
     #[test]
@@ -495,6 +514,35 @@ mod tests {
                 expected_calls: vec![],
             },
             TestCase {
+                name: "success: tick repeats the last drag",
+                given_areas: vec![(WidgetId("left"), Area::new(0, 0, 5, 5))],
+                given_ids: vec![WidgetId("left")],
+                given_clear_areas: false,
+                given_events: vec![mouse(down, 1, 1), mouse(drag, 6, 1), InputEvent::Tick],
+                expected_calls: vec!["left:Down(Left)", "left:Drag(Left)", "left:Drag(Left)"],
+            },
+            TestCase {
+                name: "failure: tick after up does nothing",
+                given_areas: vec![(WidgetId("left"), Area::new(0, 0, 5, 5))],
+                given_ids: vec![WidgetId("left")],
+                given_clear_areas: false,
+                given_events: vec![
+                    mouse(down, 1, 1),
+                    mouse(drag, 2, 1),
+                    mouse(up, 2, 1),
+                    InputEvent::Tick,
+                ],
+                expected_calls: vec!["left:Down(Left)", "left:Drag(Left)", "left:Up(Left)"],
+            },
+            TestCase {
+                name: "failure: tick after down without drag does nothing",
+                given_areas: vec![(WidgetId("left"), Area::new(0, 0, 5, 5))],
+                given_ids: vec![WidgetId("left")],
+                given_clear_areas: false,
+                given_events: vec![mouse(down, 1, 1), InputEvent::Tick],
+                expected_calls: vec!["left:Down(Left)"],
+            },
+            TestCase {
                 name: "failure: down outside any area",
                 given_areas: vec![(WidgetId("left"), Area::new(0, 0, 5, 5))],
                 given_ids: vec![WidgetId("left")],
@@ -530,7 +578,7 @@ mod tests {
             }
 
             for event in test_case.given_events {
-                Pointer::handle(&mut world, event, &test_case.given_ids);
+                event.handle(&mut world, &test_case.given_ids);
             }
 
             assert_eq!(
